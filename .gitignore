@@ -50,3 +50,8 @@ Thumbs.db
 /photos-a-uploader/*.jpg
 /photos-a-uploader/*.png
 /photos-a-uploader/*.jpeg
+
+# Binaires de développement (ne pas commiter)
+ngrok.exe
+cloudflared.exe
+generate_vapid.php
