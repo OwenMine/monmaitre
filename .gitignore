@@ -1,0 +1,52 @@
+# ============================================
+# .gitignore — MON MAÎTRE
+# ============================================
+
+# Dépendances
+/vendor
+/node_modules
+
+# Assets compilés
+/public/build
+/public/hot
+/public/storage
+
+# Fichiers d'environnement
+.env
+.env.*
+!.env.example
+
+# Logs
+/storage/logs/*.log
+/storage/logs/*.txt
+
+# Cache
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+
+# Fichiers uploadés
+/storage/app/public/repetiteurs/photos/*
+/storage/app/documents/*
+/storage/app/private/*
+
+# Fichiers temporaires
+*.tmp
+*.log
+*.cache
+
+# IDE
+.idea
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dossiers non utilisés
+/monmaitre-test
+/photos-a-uploader/*.jpg
+/photos-a-uploader/*.png
+/photos-a-uploader/*.jpeg

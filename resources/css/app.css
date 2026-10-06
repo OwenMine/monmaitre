@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   BASE
+   ============================================ */
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        font-family:
+            "Inter",
+            system-ui,
+            -apple-system,
+            sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Scrollbar personnalisée */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f5f6fa;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #143b8f;
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #062b5c;
+    }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@layer utilities {
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes zoomIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes softPulse {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.7;
+        }
+    }
+
+    @keyframes float {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.6s ease-out forwards;
+    }
+    .animate-slide-up {
+        animation: slideUp 0.6s ease-out forwards;
+    }
+    .animate-slide-in-left {
+        animation: slideInLeft 0.6s ease-out forwards;
+    }
+    .animate-slide-in-right {
+        animation: slideInRight 0.6s ease-out forwards;
+    }
+    .animate-zoom-in {
+        animation: zoomIn 0.5s ease-out forwards;
+    }
+    .animate-float {
+        animation: float 4s ease-in-out infinite;
+    }
+
+    /* Animations au scroll (contrôlées par JS) */
+    .animate-on-scroll {
+        opacity: 0;
+        transform: translateY(30px);
+        transition:
+            opacity 0.8s ease-out,
+            transform 0.8s ease-out;
+    }
+
+    .animate-on-scroll.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Délais échelonnés */
+    .delay-100 {
+        transition-delay: 0.1s;
+    }
+    .delay-200 {
+        transition-delay: 0.2s;
+    }
+    .delay-300 {
+        transition-delay: 0.3s;
+    }
+    .delay-400 {
+        transition-delay: 0.4s;
+    }
+    .delay-500 {
+        transition-delay: 0.5s;
+    }
+}
+
+/* ============================================
+   COMPOSANTS
+   ============================================ */
+
+@layer components {
+    /* Boutons */
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-300;
+    }
+
+    .btn-primary {
+        @apply btn bg-mm-navy text-white hover:bg-mm-navy-hover hover:shadow-lg hover:shadow-mm-navy/20 hover:-translate-y-0.5;
+    }
+
+    .btn-accent {
+        @apply btn bg-mm-accent text-mm-navy hover:bg-mm-accent-hover hover:shadow-lg hover:shadow-mm-accent/40 hover:-translate-y-0.5;
+    }
+
+    .btn-secondary {
+        @apply btn bg-mm-secondary text-white hover:bg-mm-secondary-hover hover:shadow-lg hover:shadow-mm-secondary/20 hover:-translate-y-0.5;
+    }
+
+    .btn-outline {
+        @apply btn bg-white border-2 border-mm-navy text-mm-navy hover:bg-mm-navy hover:text-white hover:-translate-y-0.5;
+    }
+
+    /* Cartes */
+    .card {
+        @apply bg-white rounded-2xl border border-gray-100 p-6;
+    }
+
+    .card-hover {
+        @apply card transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 hover:-translate-y-1 hover:border-gray-200;
+    }
+
+    /* Badges */
+    .badge {
+        @apply inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap;
+    }
+
+    /* Inputs */
+    .input {
+        @apply w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-mm-secondary focus:ring-2 focus:ring-mm-secondary/20 transition;
+    }
+
+    .input-error {
+        @apply border-red-400 focus:border-red-500 focus:ring-red-200;
+    }
+}
+
+/* ============================================
+   PATTERNS
+   ============================================ */
+
+.pattern-dots {
+    background-image: radial-gradient(
+        circle,
+        rgba(11, 61, 145, 0.05) 1px,
+        transparent 1px
+    );
+    background-size: 24px 24px;
+}
+
+.pattern-grid {
+    background-image:
+        linear-gradient(rgba(11, 61, 145, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(11, 61, 145, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+/* Désactiver le parallax sur mobile pour des raisons de performance */
+@media (max-width: 768px) {
+    .parallax-bg {
+        background-attachment: scroll !important;
+    }
+}
