@@ -61,20 +61,15 @@ class User extends Authenticatable
     // Helpers login
     // ============================================
 
+    // ⚡ B.19 : Alias de compatibilité (déprécié — utiliser PhoneHelper)
     public static function isEmail(string $value): bool
     {
-        return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
+        return \App\Support\PhoneHelper::isEmail($value);
     }
 
     public static function normalizePhone(string $value): string
     {
-        $digits = preg_replace('/\D+/', '', $value);
-
-        if (str_starts_with($digits, '225')) {
-            $digits = substr($digits, 3);
-        }
-
-        return $digits;
+        return \App\Support\PhoneHelper::normalize($value);
     }
 
     // ============================================

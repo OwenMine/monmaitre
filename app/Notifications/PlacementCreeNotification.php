@@ -25,6 +25,9 @@ class PlacementCreeNotification extends Notification
         $url = $isRepetiteur
             ? route('repetiteur.placements.show', $this->placement)
             : route('parent.placements.show', $this->placement);
+            // Vider le cache de notifications
+    \Illuminate\Support\Facades\Cache::forget("user_{$notifiable->id}_unread_notifs");
+    \Illuminate\Support\Facades\Cache::forget("user_{$notifiable->id}_latest_notifs");
 
         return [
             'type'       => 'placement_cree',

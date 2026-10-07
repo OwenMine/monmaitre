@@ -31,28 +31,25 @@ class DashboardController extends Controller
 
         $missionsTotal = $repetiteur->placements()->count();
 
-        $seancesEffectuees = Seance::where('repetiteur_id', $repetiteur->id)
-            ->where('statut', 'effectuee')
-            ->count();
+        // ⚡ D.2 : Stats agrégées en 1 requête
+        $statsGlobales = \App\Models\Seance::where('repetiteur_id', $repetiteur->id)
+            ->selectRaw("
+                COUNT(*) as total,
+                SUM(CASE WHEN statut = 'effectuee' THEN 1 ELSE 0 END) as effectuees,
+                SUM(CASE WHEN statut = 'en_attente' THEN 1 ELSE 0 END) as en_attente,
+                SUM(CASE WHEN statut = 'absence_repetiteur' THEN 1 ELSE 0 END) as absences,
+                SUM(CASE WHEN statut = 'effectuee' THEN duree_minutes ELSE 0 END) as minutes
+            ")
+            ->first();
 
-        $seancesEnAttente = Seance::where('repetiteur_id', $repetiteur->id)
-            ->where('statut', 'en_attente')
-            ->count();
-
-        $totalMinutes = (int) Seance::where('repetiteur_id', $repetiteur->id)
-            ->where('statut', 'effectuee')
-            ->sum('duree_minutes');
-
-        $heuresTotales = round($totalMinutes / 60, 1);
-
-        $absences = Seance::where('repetiteur_id', $repetiteur->id)
-            ->where('statut', 'absence_repetiteur')
-            ->count();
-
-        $totalSeances = Seance::where('repetiteur_id', $repetiteur->id)->count();
-        $tauxPresence = $totalSeances > 0
+        $seancesEffectuees = (int) $statsGlobales->effectuees;
+        $seancesEnAttente  = (int) $statsGlobales->en_attente;
+        $absences          = (int) $statsGlobales->absences;
+        $heuresTotales     = round($statsGlobales->minutes / 60, 1);
+        $totalSeances      = (int) $statsGlobales->total;
+        $tauxPresence      = $totalSeances > 0
             ? round(($seancesEffectuees / $totalSeances) * 100, 1)
-            : 0;
+            : 0.0;
 
         $noteMoyenne = $repetiteur->evaluations()->avg('note') ?? 0;
         $noteMoyenne = round($noteMoyenne, 1);

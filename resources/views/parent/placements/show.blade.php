@@ -1,6 +1,6 @@
 @extends('layouts.parent')
 
-@section('title', 'Placement ' . $placement->reference)
+@section('title', 'Mon placement ' . $placement->reference . ' — ' . $placement->eleve->prenom)
 
 @section('content')
 

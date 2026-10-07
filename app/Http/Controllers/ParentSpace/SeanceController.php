@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\ParentSpace;
 
 use App\Http\Controllers\Controller;
@@ -7,32 +9,50 @@ use App\Models\Placement;
 use App\Models\Seance;
 use App\Notifications\SeanceContesteeNotification;
 use App\Notifications\SeanceValideeNotification;
+use App\Support\AuthHelper;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SeanceController extends Controller
 {
     /**
      * Valider une séance individuellement.
      */
-    public function valider(Seance $seance)
+    public function valider(Seance $seance): RedirectResponse
     {
-        if ($seance->placement->parent_id !== auth()->id()) {
-            abort(403);
-        }
+        // ⚡ D.1 : Vérification d'ownership via AuthHelper
+        AuthHelper::verifierPropriete($seance->placement, champ: 'parent_id');
 
-        if (! $seance->estEnAttente()) {
-            return redirect()->back()
-                ->with('error', 'Cette séance a déjà été traitée.');
-        }
+        // ⚡ Transaction + lock pour éviter les doubles validations
+        $result = DB::transaction(function () use ($seance) {
+            $seance = Seance::lockForUpdate()->find($seance->id);
 
-        $seance->update([
-            'statut'      => 'effectuee',
-            'validee_at'  => now(),
-            'validee_par' => auth()->id(),
-        ]);
+            if (! $seance) {
+                return ['error' => 'Séance introuvable.'];
+            }
+
+            if (! $seance->estEnAttente()) {
+                return ['error' => 'Cette séance a déjà été traitée.'];
+            }
+
+            $seance->update([
+                'statut'      => 'effectuee',
+                'validee_at'  => now(),
+                'validee_par' => auth()->id(),
+            ]);
+
+            return ['success' => true, 'seance' => $seance];
+        });
+
+        if (isset($result['error'])) {
+            return redirect()->back()->with('error', $result['error']);
+        }
 
         // 🔔 Notifier le répétiteur
-        $seance->repetiteur->user->notify(new SeanceValideeNotification($seance));
+        $result['seance']->repetiteur->user->notify(
+            new SeanceValideeNotification($result['seance'])
+        );
 
         return redirect()->back()
             ->with('success', 'Séance validée avec succès.');
@@ -41,27 +61,42 @@ class SeanceController extends Controller
     /**
      * Contester une séance avec une raison.
      */
-    public function contester(Request $request, Seance $seance)
+    public function contester(Request $request, Seance $seance): RedirectResponse
     {
-        if ($seance->placement->parent_id !== auth()->id()) {
-            abort(403);
-        }
-
-        if (! $seance->estEnAttente()) {
-            return redirect()->back()
-                ->with('error', 'Cette séance a déjà été traitée.');
-        }
+        // ⚡ D.1 : Vérification d'ownership via AuthHelper
+        AuthHelper::verifierPropriete($seance->placement, champ: 'parent_id');
 
         $data = $request->validate([
             'raison_contestation' => 'required|string|max:1000',
         ]);
 
-        $seance->update([
-            'statut'              => 'contested',
-            'validee_at'          => now(),
-            'validee_par'         => auth()->id(),
-            'raison_contestation' => $data['raison_contestation'],
-        ]);
+        // ⚡ Transaction + lock
+        $result = DB::transaction(function () use ($seance, $data) {
+            $seance = Seance::lockForUpdate()->find($seance->id);
+
+            if (! $seance) {
+                return ['error' => 'Séance introuvable.'];
+            }
+
+            if (! $seance->estEnAttente()) {
+                return ['error' => 'Cette séance a déjà été traitée.'];
+            }
+
+            $seance->update([
+                'statut'              => 'contested',
+                'validee_at'          => now(),
+                'validee_par'         => auth()->id(),
+                'raison_contestation' => $data['raison_contestation'],
+            ]);
+
+            return ['success' => true, 'seance' => $seance];
+        });
+
+        if (isset($result['error'])) {
+            return redirect()->back()->with('error', $result['error']);
+        }
+
+        $seance = $result['seance'];
 
         // 🔔 Notifier le répétiteur
         $seance->repetiteur->user->notify(new SeanceContesteeNotification($seance));
@@ -79,17 +114,15 @@ class SeanceController extends Controller
     /**
      * Valider toutes les séances en attente d'un placement.
      */
-    public function validerTout(Placement $placement)
+    public function validerTout(Placement $placement): RedirectResponse
     {
-        if ($placement->parent_id !== auth()->id()) {
-            abort(403);
-        }
+        // ⚡ D.1 : Vérification d'ownership via AuthHelper
+        AuthHelper::verifierPropriete($placement, champ: 'parent_id');
 
         $seances = $placement->seances()->where('statut', 'en_attente')->get();
 
         if ($seances->isEmpty()) {
-            return redirect()->back()
-                ->with('error', 'Aucune séance en attente.');
+            return redirect()->back()->with('error', 'Aucune séance en attente.');
         }
 
         foreach ($seances as $seance) {

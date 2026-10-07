@@ -245,3 +245,22 @@
         background-attachment: scroll !important;
     }
 }
+
+/* ============================================
+   PERFORMANCE — Parallax mobile
+   ============================================ */
+
+/* Le parallax est désactivé sur mobile (trop coûteux pour le GPU) */
+@media (max-width: 768px) {
+    section#services > div[style*="background-attachment: fixed"] {
+        background-attachment: scroll !important;
+        background-position: center !important;
+    }
+}
+
+/* Optimisations générales GPU */
+.will-change-transform {
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+}

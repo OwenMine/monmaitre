@@ -21,6 +21,9 @@ class SeanceValideeNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
+        // Vider le cache de notifications
+    \Illuminate\Support\Facades\Cache::forget("user_{$notifiable->id}_unread_notifs");
+    \Illuminate\Support\Facades\Cache::forget("user_{$notifiable->id}_latest_notifs");
         return [
             'type'       => 'seance_validee',
             'titre'      => 'Séance validée',

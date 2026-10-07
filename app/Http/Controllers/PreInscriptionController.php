@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\PhoneHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 
 class PreInscriptionController extends Controller
 {
@@ -30,8 +30,8 @@ class PreInscriptionController extends Controller
             'password'  => 'required|string|min:8|confirmed',
         ]);
 
-        // Normaliser le téléphone (retirer espaces, +225…)
-        $phone = User::normalizePhone($data['phone']);
+        // ⚡ B.19 : Utiliser PhoneHelper
+        $phone = PhoneHelper::normalize($data['phone']);
 
         // Vérifier qu'après normalisation, le numéro n'existe pas déjà
         if (User::where('phone', $phone)->exists()) {
@@ -42,9 +42,9 @@ class PreInscriptionController extends Controller
 
         $user = User::create([
             'name'     => $data['name'],
-            'email'    => null, // ✅ Parent : email optionnel (null par défaut)
+            'email'    => null, // Parent : email optionnel (null par défaut)
             'phone'    => $phone,
-            'whatsapp' => isset($data['whatsapp']) ? User::normalizePhone($data['whatsapp']) : null,
+            'whatsapp' => isset($data['whatsapp']) ? PhoneHelper::normalize($data['whatsapp']) : null,
             'commune'  => $data['commune'],
             'quartier' => $data['quartier'] ?? null,
             'password' => Hash::make($data['password']),
@@ -87,8 +87,8 @@ class PreInscriptionController extends Controller
         $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'],
-            'phone'    => User::normalizePhone($data['phone']),
-            'whatsapp' => isset($data['whatsapp']) ? User::normalizePhone($data['whatsapp']) : null,
+            'phone'    => PhoneHelper::normalize($data['phone']),  // ⚡ B.19
+            'whatsapp' => isset($data['whatsapp']) ? PhoneHelper::normalize($data['whatsapp']) : null,
             'commune'  => $data['commune'],
             'quartier' => $data['quartier'] ?? null,
             'password' => Hash::make($data['password']),

@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Profil – ' . $repetiteur->user->name)
+@section('title', 'Profil répétiteur — ' . $repetiteur->user->name)
 
 @section('content')
 

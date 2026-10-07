@@ -25,7 +25,6 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
         
-
         // ============================================
         // View Composer : notifications
         // ============================================
@@ -36,7 +35,15 @@ class AppServiceProvider extends ServiceProvider
             $dernieresNotifications = collect();
 
             if ($user) {
-                $notificationsNonLues = $user->unreadNotifications()->count();
+                // ⚡ C.8 : Cache 30s UNIQUEMENT pour le compteur (sérialisable)
+                $notificationsNonLues = \Illuminate\Support\Facades\Cache::remember(
+                    "user_{$user->id}_unread_notifs",
+                    now()->addSeconds(30),
+                    fn () => $user->unreadNotifications()->count()
+                );
+
+                // ⚡ Les 5 dernières notifs : requête directe (pas de cache)
+                // Car DatabaseNotificationCollection n'est pas sérialisable
                 $dernieresNotifications = $user->notifications()->limit(5)->get();
             }
 

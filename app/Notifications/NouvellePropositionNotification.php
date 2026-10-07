@@ -21,6 +21,9 @@ class NouvellePropositionNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
+        // Vider le cache de notifications
+    \Illuminate\Support\Facades\Cache::forget("user_{$notifiable->id}_unread_notifs");
+    \Illuminate\Support\Facades\Cache::forget("user_{$notifiable->id}_latest_notifs");
         return [
             'type'       => 'nouvelle_proposition',
             'titre'      => 'Nouvelle proposition reçue',
@@ -30,6 +33,7 @@ class NouvellePropositionNotification extends Notification
             'icone'      => 'bell',
             'created_at' => now()->toISOString(),
         ];
+            
     }
 
     public function toWebPush($notifiable, $notification): WebPushMessage

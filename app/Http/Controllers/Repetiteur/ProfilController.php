@@ -29,6 +29,11 @@ class ProfilController extends Controller
     {
         $repetiteur = auth()->user()->repetiteur;
 
+        if (! $repetiteur) {
+            return redirect()->back()
+                ->with('error', 'Profil introuvable. Complétez-le d\'abord.');
+        }
+
         $data = $request->validate([
             'niveau_etudes' => 'required|string|max:100',
             'diplome'       => 'required|string|max:150',
@@ -54,19 +59,42 @@ class ProfilController extends Controller
             'rayon_deplacement'  => 'required|integer|min:1|max:100',
         ]);
 
-        $data['matieres']  = array_values(array_filter(array_map('trim', explode("\n", $data['matieres_text']))));
-        $data['classes']   = array_values(array_filter(array_map('trim', explode("\n", $data['classes_text']))));
-        $data['communes']  = array_values(array_filter(array_map('trim', explode("\n", $data['communes_text']))));
-        $data['quartiers'] = $data['quartiers_text']
-            ? array_values(array_filter(array_map('trim', explode("\n", $data['quartiers_text']))))
-            : [];
+        // ⚡ B.8 : Transaction pour éviter la perte de données
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($data, $repetiteur) {
+                // Convertir les textes en tableaux
+                $data['matieres']  = array_values(array_filter(array_map('trim', explode("\n", $data['matieres_text']))));
+                $data['classes']   = array_values(array_filter(array_map('trim', explode("\n", $data['classes_text']))));
+                $data['communes']  = array_values(array_filter(array_map('trim', explode("\n", $data['communes_text']))));
+                $data['quartiers'] = ! empty($data['quartiers_text'])
+                    ? array_values(array_filter(array_map('trim', explode("\n", $data['quartiers_text']))))
+                    : [];
 
-        unset($data['matieres_text'], $data['classes_text'], $data['communes_text'], $data['quartiers_text']);
+                // Supprimer les champs temporaires
+                unset(
+                    $data['matieres_text'],
+                    $data['classes_text'],
+                    $data['communes_text'],
+                    $data['quartiers_text']
+                );
 
-        $repetiteur->update($data);
+                $repetiteur->update($data);
+            });
 
-        return redirect()->route('repetiteur.profil.edit')
-            ->with('success', 'Votre profil a été enregistré.');
+            return redirect()->route('repetiteur.profil.edit')
+                ->with('success', 'Votre profil a été enregistré.');
+
+        } catch (\Throwable $e) {
+            \Log::error('Erreur sauvegarde profil répétiteur', [
+                'repetiteur_id' => $repetiteur->id,
+                'user_id'       => auth()->id(),
+                'error'         => $e->getMessage(),
+            ]);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Une erreur est survenue lors de l\'enregistrement. Réessayez.');
+        }
     }
 
     // ============================================================

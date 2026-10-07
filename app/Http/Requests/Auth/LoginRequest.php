@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Auth;
 
 use App\Models\User;
+use App\Support\PhoneHelper;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -51,43 +52,44 @@ class LoginRequest extends FormRequest
      * @throws ValidationException
      */
     public function authenticate(): void
-{
-    $this->ensureIsNotRateLimited();
+    {
+        $this->ensureIsNotRateLimited();
 
-    $identifier = trim($this->string('identifier')->toString());
-    $password   = $this->string('password')->toString();
+        $identifier = trim($this->string('identifier')->toString());
+        $password   = $this->string('password')->toString();
 
-    $credentials = User::isEmail($identifier)
-        ? ['email' => $identifier, 'password' => $password]
-        : ['phone' => User::normalizePhone($identifier), 'password' => $password];
+        // ⚡ B.19 : Utiliser PhoneHelper au lieu de User::isEmail / User::normalizePhone
+        $credentials = PhoneHelper::isEmail($identifier)
+            ? ['email' => $identifier, 'password' => $password]
+            : ['phone' => PhoneHelper::normalize($identifier), 'password' => $password];
 
-    if (! Auth::attempt($credentials, $this->boolean('remember'))) {
-        RateLimiter::hit($this->throttleKey());
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+            RateLimiter::hit($this->throttleKey());
 
-        throw ValidationException::withMessages([
-            'identifier' => 'Ces identifiants ne correspondent à aucun compte.',
-        ]);
-    }
+            throw ValidationException::withMessages([
+                'identifier' => 'Ces identifiants ne correspondent à aucun compte.',
+            ]);
+        }
 
-    // ⚡ Sécurité : vérifier le statut du compte
-    $user = Auth::user();
+        // ⚡ Sécurité : vérifier le statut du compte
+        $user = Auth::user();
 
-    if ($user->status !== 'actif') {
-        Auth::logout();
-        RateLimiter::hit($this->throttleKey());
+        if ($user->status !== 'actif') {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
 
-        $message = match ($user->status) {
-            'suspendu' => 'Votre compte a été suspendu. Contactez MON MAÎTRE au 07 19 16 76 88.',
-            'inactif'  => 'Votre compte est inactif. Contactez MON MAÎTRE au 07 19 16 76 88.',
-            default    => 'Votre compte n\'est pas actif. Contactez MON MAÎTRE.',
-        };
+            $message = match ($user->status) {
+                'suspendu' => 'Votre compte a été suspendu. Contactez MON MAÎTRE au 07 19 16 76 88.',
+                'inactif'  => 'Votre compte est inactif. Contactez MON MAÎTRE au 07 19 16 76 88.',
+                default    => 'Votre compte n\'est pas actif. Contactez MON MAÎTRE.',
+            };
 
-        throw ValidationException::withMessages([
-            'identifier' => $message,
-        ]);
-    }
+            throw ValidationException::withMessages([
+                'identifier' => $message,
+            ]);
+        }
 
-    RateLimiter::clear($this->throttleKey());
+        RateLimiter::clear($this->throttleKey());
     }
 
     /**

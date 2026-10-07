@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Traits\HasStatutLabel;
 use Illuminate\Database\Eloquent\Model;
 
 class Seance extends Model
 {
+    use HasStatutLabel;
+
     protected $fillable = [
         'placement_id', 'repetiteur_id',
         'date', 'duree_minutes', 'contenu', 'commentaire',
@@ -13,8 +18,8 @@ class Seance extends Model
     ];
 
     protected $casts = [
-        'date'        => 'date',
-        'validee_at'  => 'datetime',
+        'date'       => 'date',
+        'validee_at' => 'datetime',
     ];
 
     // ============================================
@@ -36,43 +41,8 @@ class Seance extends Model
         return $this->belongsTo(User::class, 'validee_par');
     }
 
-    public function evaluations()
-    {
-        return $this->hasMany(Evaluation::class);
-    }
-
     // ============================================
-    // Labels & couleurs
-    // ============================================
-
-    public function statutLabel(): string
-    {
-        return match ($this->statut) {
-            'en_attente'         => 'En attente de validation',
-            'effectuee'          => 'Validée',
-            'contested'          => 'Contestée',
-            'absence_repetiteur' => 'Absence répétiteur',
-            'absence_eleve'      => 'Absence élève',
-            'annulee'            => 'Annulée',
-            default => 'Inconnu',
-        };
-    }
-
-    public function statutCouleur(): string
-    {
-        return match ($this->statut) {
-            'en_attente'         => 'bg-orange-100 text-orange-700',
-            'effectuee'          => 'bg-green-100 text-green-700',
-            'contested'          => 'bg-red-100 text-red-700',
-            'absence_repetiteur' => 'bg-red-100 text-red-700',
-            'absence_eleve'      => 'bg-orange-100 text-orange-700',
-            'annulee'            => 'bg-gray-100 text-gray-700',
-            default              => 'bg-gray-100 text-gray-700',
-        };
-    }
-
-    // ============================================
-    // Helpers
+    // Helpers métier
     // ============================================
 
     public function estEnAttente(): bool
@@ -85,5 +55,31 @@ class Seance extends Model
         return $this->statut === 'effectuee';
     }
 
-    
+    // ============================================
+    // Trait HasStatutLabel
+    // ============================================
+
+    protected function statutLabels(): array
+    {
+        return [
+            'en_attente'         => 'En attente de validation',
+            'effectuee'          => 'Validée',
+            'contested'          => 'Contestée',
+            'absence_repetiteur' => 'Absence répétiteur',
+            'absence_eleve'      => 'Absence élève',
+            'annulee'            => 'Annulée',
+        ];
+    }
+
+    protected function statutCouleurs(): array
+    {
+        return [
+            'en_attente'         => 'bg-mm-accent/30 text-mm-navy',
+            'effectuee'          => 'bg-green-100 text-green-700',
+            'contested'          => 'bg-red-100 text-red-700',
+            'absence_repetiteur' => 'bg-red-100 text-red-700',
+            'absence_eleve'      => 'bg-orange-100 text-orange-700',
+            'annulee'            => 'bg-gray-100 text-gray-700',
+        ];
+    }
 }

@@ -1,6 +1,6 @@
 @extends('layouts.parent')
 
-@section('title', 'Demande #MM-' . str_pad($demande->id, 4, '0', STR_PAD_LEFT))
+@section('title', 'Ma demande #MM-' . str_pad($demande->id, 4, '0', STR_PAD_LEFT) . ' — ' . $demande->eleve->prenom)
 
 @section('content')
 

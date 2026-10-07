@@ -1,6 +1,6 @@
 @extends('layouts.repetiteur')
 
-@section('title', 'Séances – ' . $placement->reference)
+@section('title', 'Suivi des séances — Mission ' . $placement->reference . ' — ' . $placement->eleve->prenom)
 
 @section('content')
 

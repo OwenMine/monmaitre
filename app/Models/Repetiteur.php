@@ -1,12 +1,49 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Traits\HasStatutLabel;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * Profil complet d'un répétiteur.
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property string|null $photo
+ * @property string|null $niveau_etudes
+ * @property string|null $diplome
+ * @property string|null $etablissement
+ * @property int|null $annee_obtention
+ * @property array|null $matieres
+ * @property array|null $classes
+ * @property string|null $niveau_min
+ * @property string|null $niveau_max
+ * @property int $experience_annees
+ * @property array|null $jours_disponibles
+ * @property string|null $horaires_disponibles
+ * @property int $max_eleves
+ * @property array|null $communes
+ * @property array|null $quartiers
+ * @property int $rayon_deplacement
+ * @property string $statut
+ *
+ * @method int placements_count
+ * @method int evaluations_count
+ */
 class Repetiteur extends Model
 {
+    use HasStatutLabel;
+
+    // ============================================
+    // Properties
+    // ============================================
+
     protected $fillable = [
         'user_id', 'photo',
         'niveau_etudes', 'diplome', 'etablissement', 'annee_obtention',
@@ -18,20 +55,19 @@ class Repetiteur extends Model
     ];
 
     protected $casts = [
-        'matieres' => 'array',
-        'classes' => 'array',
+        'matieres'          => 'array',
+        'classes'           => 'array',
         'jours_disponibles' => 'array',
-        'communes' => 'array',
-        'quartiers' => 'array',
+        'communes'          => 'array',
+        'quartiers'         => 'array',
     ];
 
     // ============================================
-    // Accessor : URL publique de la photo
+    // Accessors
     // ============================================
 
-        /**
-     * Retourne l'URL de la photo via une route dédiée.
-     * Contourne les problèmes de symlink storage.
+    /**
+     * URL publique de la photo de profil (via route dédiée).
      */
     public function getPhotoUrlAttribute(): ?string
     {
@@ -39,7 +75,7 @@ class Repetiteur extends Model
             return null;
         }
 
-        if (! \Storage::disk('public')->exists($this->photo)) {
+        if (! Storage::disk('public')->exists($this->photo)) {
             return null;
         }
 
@@ -47,7 +83,7 @@ class Repetiteur extends Model
     }
 
     /**
-     * Retourne l'initiale du user (fallback quand pas de photo).
+     * Initiale du nom du répétiteur (fallback quand pas de photo).
      */
     public function getInitialeAttribute(): string
     {
@@ -58,58 +94,64 @@ class Repetiteur extends Model
     // Relations
     // ============================================
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function documents()
+    public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
     }
 
-    public function propositions()
+    public function propositions(): HasMany
     {
         return $this->hasMany(Proposition::class);
     }
 
-    public function placements()
+    public function placements(): HasMany
     {
         return $this->hasMany(Placement::class);
     }
-        public function evaluations()
+
+    public function evaluations(): HasMany
     {
         return $this->hasMany(Evaluation::class);
     }
 
     // ============================================
-    // Labels statut
+    // Trait HasStatutLabel
     // ============================================
 
-    public function statutLabel(): string
+    protected function statutLabels(): array
     {
-        return match ($this->statut) {
-            'pre_inscrit' => 'Pré-inscrit',
-            'dossier_incomplet' => 'Dossier incomplet',
-            'candidature_envoyee' => 'Candidature envoyée',
-            'a_examiner' => 'À examiner',
+        return [
+            'pre_inscrit'           => 'Pré-inscrit',
+            'dossier_incomplet'     => 'Dossier incomplet',
+            'candidature_envoyee'   => 'Candidature envoyée',
+            'a_examiner'            => 'À examiner',
             'entretien_a_effectuer' => 'Entretien à effectuer',
-            'documents_a_verifier' => 'Documents à vérifier',
-            'profil_valide' => 'Profil validé',
-            'profil_en_attente' => 'Profil en attente',
-            'profil_refuse' => 'Profil refusé',
-            'profil_suspendu' => 'Profil suspendu',
-            default => 'Inconnu',
-        };
+            'documents_a_verifier'  => 'Documents à vérifier',
+            'profil_valide'         => 'Profil validé',
+            'profil_en_attente'     => 'Profil en attente',
+            'profil_refuse'         => 'Profil refusé',
+            'profil_suspendu'       => 'Profil suspendu',
+        ];
     }
 
-    public function statutCouleur(): string
+    protected function statutCouleurs(): array
     {
-        return match ($this->statut) {
-            'profil_valide' => 'bg-green-100 text-green-800',
-            'profil_refuse', 'profil_suspendu' => 'bg-red-100 text-red-800',
-            'candidature_envoyee', 'a_examiner' => 'bg-blue-100 text-blue-800',
-            default => 'bg-yellow-100 text-yellow-800',
-        };
+        return [
+            'pre_inscrit'           => 'bg-gray-100 text-gray-700',
+            'dossier_incomplet'     => 'bg-gray-100 text-gray-700',
+            'candidature_envoyee'   => 'bg-mm-accent/30 text-mm-navy',
+            'a_examiner'            => 'bg-mm-accent/30 text-mm-navy',
+            'entretien_a_effectuer' => 'bg-mm-navy/10 text-mm-navy',
+            'documents_a_verifier'  => 'bg-mm-navy/10 text-mm-navy',
+            'profil_valide'         => 'bg-green-100 text-green-800',
+            'profil_en_attente'     => 'bg-orange-100 text-orange-700',
+            'profil_refuse'         => 'bg-red-100 text-red-800',
+            'profil_suspendu'       => 'bg-red-100 text-red-800',
+        ];
     }
 }

@@ -1,15 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\ParentSpace;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDemandeRequest;
 use App\Models\Demande;
 use App\Models\Eleve;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 class DemandeController extends Controller
 {
-    public function index()
+    /**
+     * Liste des demandes du parent connecté.
+     */
+    public function index(): View
     {
         $demandes = Demande::where('parent_id', auth()->id())
             ->latest()
@@ -18,55 +25,73 @@ class DemandeController extends Controller
         return view('parent.demandes.index', compact('demandes'));
     }
 
-    public function create()
+    /**
+     * Formulaire de création d'une nouvelle demande.
+     */
+    public function create(): View
     {
         return view('parent.demandes.create');
     }
 
-    public function store(Request $request)
+    /**
+     * Enregistre une nouvelle demande + crée l'élève associé.
+     */
+    public function store(StoreDemandeRequest $request): RedirectResponse
     {
-        $data = $request->validate([
-            // Élève
-            'eleve_nom'            => 'required|string|max:100',
-            'eleve_prenom'         => 'required|string|max:100',
-            'eleve_age'            => 'nullable|integer|min:3|max:30',
-            'eleve_classe'         => 'required|string|max:50',
-            'eleve_etablissement'  => 'nullable|string|max:150',
+        $data = $request->validated();
 
-            // Besoin pédagogique
-            'matieres_text'        => 'required|string',
-            'objectif'             => 'required|string|max:1000',
-            'difficultes'          => 'nullable|string|max:1000',
-            'preparation_examen'   => 'nullable|string|max:100',
+        // 1. Créer l'élève
+        $eleve = $this->creerEleve($data);
 
-            // Organisation
-            'seances_semaine'      => 'required|integer|min:1|max:14',
-            'duree_seance'         => 'required|integer|min:30|max:240',
-            'jours_disponibles'    => 'required|array|min:1',
-            'horaires_disponibles' => 'required|string|max:255',
-            'date_debut_souhaitee' => 'required|date|after_or_equal:today',
-            'adresse_cours'        => 'required|string|max:255',
+        // 2. Créer la demande
+        $demande = $this->creerDemande($data, $eleve);
 
-            // Complémentaire
-            'informations_complementaires' => 'nullable|string|max:2000',
-        ]);
+        return redirect()->route('parent.demandes.show', $demande)
+            ->with('success', 'Votre demande a été envoyée à MON MAÎTRE.');
+    }
 
-        // Convertir le texte en tableau (une matière par ligne)
-        $matieres = array_values(array_filter(array_map('trim', explode("\n", $data['matieres_text']))));
+    /**
+     * Détails d'une demande (avec vérification d'ownership).
+     */
+    public function show(Demande $demande): View
+    {
+        if ($demande->parent_id !== auth()->id()) {
+            abort(403);
+        }
 
-        // Créer l'élève (sans le champ niveau)
-        $eleve = Eleve::create([
+        return view('parent.demandes.show', compact('demande'));
+    }
+
+    // ============================================================
+    // Méthodes privées (D.8)
+    // ============================================================
+
+    /**
+     * Crée un élève à partir des données du formulaire.
+     */
+    private function creerEleve(array $data): Eleve
+    {
+        return Eleve::create([
             'parent_id'     => auth()->id(),
             'nom'           => $data['eleve_nom'],
             'prenom'        => $data['eleve_prenom'],
             'age'           => $data['eleve_age'] ?? null,
             'classe'        => $data['eleve_classe'],
             'etablissement' => $data['eleve_etablissement'] ?? null,
-            // 'niveau' → retiré du formulaire, reste null en base
         ]);
+    }
 
-        // Créer la demande
-        $demande = Demande::create([
+    /**
+     * Crée une demande à partir des données du formulaire et de l'élève.
+     */
+    private function creerDemande(array $data, Eleve $eleve): Demande
+    {
+        // Convertir les matières (une par ligne) en tableau
+        $matieres = array_values(array_filter(
+            array_map('trim', explode("\n", $data['matieres_text']))
+        ));
+
+        return Demande::create([
             'parent_id'                    => auth()->id(),
             'eleve_id'                     => $eleve->id,
             'matieres'                     => $matieres,
@@ -82,17 +107,5 @@ class DemandeController extends Controller
             'informations_complementaires' => $data['informations_complementaires'] ?? null,
             'statut'                       => 'demande_envoyee',
         ]);
-
-        return redirect()->route('parent.demandes.show', $demande)
-            ->with('success', 'Votre demande a été envoyée à MON MAÎTRE.');
-    }
-
-    public function show(Demande $demande)
-    {
-        if ($demande->parent_id !== auth()->id()) {
-            abort(403);
-        }
-
-        return view('parent.demandes.show', compact('demande'));
     }
 }

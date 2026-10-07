@@ -20,6 +20,7 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
-        "@alpinejs/collapse": "^3.17.4"
+        "@alpinejs/collapse": "^3.17.4",
+        "chart.js": "^4.5.1"
     }
 }

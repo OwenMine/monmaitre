@@ -143,4 +143,16 @@
         @endif
     </div>
 
+    <form method="GET" class="inline-flex items-center gap-2 ml-auto">
+    <label class="text-sm text-gray-500">Afficher :</label>
+    <select name="per_page" onchange="this.form.submit()" 
+            class="border border-gray-200 rounded-lg px-2 py-1 text-sm">
+        @foreach([10, 20, 50] as $n)
+            <option value="{{ $n }}" {{ request('per_page', 10) == $n ? 'selected' : '' }}>
+                {{ $n }}
+            </option>
+        @endforeach
+    </select>
+    </form>
+
 @endsection

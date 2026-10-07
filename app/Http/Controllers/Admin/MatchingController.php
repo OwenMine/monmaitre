@@ -13,6 +13,7 @@ use App\Notifications\PropositionAccepteeNotification;
 use App\Notifications\PropositionValideeAdminNotification;
 use App\Services\AuditLogger;
 use App\Services\MatchingService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class MatchingController extends Controller
@@ -126,66 +127,106 @@ class MatchingController extends Controller
             'message_admin' => 'nullable|string|max:1000',
         ]);
 
-        // Vérifier le statut
-        if (! in_array($proposition->statut, ['proposee', 'refusee'])) {
-            return redirect()->back()->with('error', 'Cette proposition a déjà été traitée.');
+        // ⚡ B.3 : Transaction + lock pour éviter la race condition
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($proposition, $request) {
+            
+            // Recharger la proposition avec un lock exclusif
+            $proposition = Proposition::lockForUpdate()->find($proposition->id);
+
+            if (! $proposition) {
+                return ['error' => 'Proposition introuvable.'];
+            }
+
+            // Vérifier le statut
+            if (! in_array($proposition->statut, ['proposee', 'refusee'])) {
+                return ['error' => 'Cette proposition a déjà été traitée.'];
+            }
+
+            // Charger les relations
+            $proposition->load(['demande.eleve', 'demande.parent', 'repetiteur.user']);
+
+            // ⚡ B.2 : Vérifier que le répétiteur est toujours valide
+            if ($proposition->repetiteur->statut !== 'profil_valide') {
+                return ['error' => 'Ce répétiteur n\'est plus disponible (statut : ' . $proposition->repetiteur->statutLabel() . ').'];
+            }
+
+            if ($proposition->repetiteur->user->status !== 'actif') {
+                return ['error' => 'Le compte de ce répétiteur n\'est plus actif.'];
+            }
+
+            $demande = $proposition->demande;
+
+            // Vérifier qu'un placement n'existe pas déjà
+            if (Placement::where('demande_id', $demande->id)->exists()) {
+                return ['error' => 'Un placement existe déjà pour cette demande.'];
+            }
+
+            // 1. Mettre à jour la proposition
+            $proposition->update([
+                'statut'       => 'acceptee',
+                'date_reponse' => now(),
+            ]);
+
+            // 2. Créer le placement
+            $placement = Placement::create([
+                'reference'      => Placement::genererReference(),
+                'demande_id'     => $demande->id,
+                'proposition_id' => $proposition->id,
+                'parent_id'      => $demande->parent_id,
+                'repetiteur_id'  => $proposition->repetiteur_id,
+                'eleve_id'       => $demande->eleve_id,
+                'matiere'        => ! empty($demande->matieres)
+                    ? implode(', ', $demande->matieres)
+                    : 'Non spécifiée',
+                'adresse'        => $demande->adresse_cours,
+                'date_debut'     => $demande->date_debut_souhaitee ?? now(),
+                'frequence'      => $demande->seances_semaine . ' séance(s) / semaine',
+                'horaires'       => $demande->horaires_disponibles,
+                'tarif_convenu'  => null,
+                'statut'         => 'confirme',
+                'commentaires'   => 'Placement créé par l\'admin ' . auth()->user()->name 
+                    . '. Message : ' . ($request->message_admin ?? 'Aucun'),
+            ]);
+
+            // 3. Mettre à jour le statut de la demande
+            $demande->update(['statut' => 'placement_confirme']);
+
+            return [
+                'success'   => true,
+                'placement' => $placement,
+                'proposition' => $proposition,
+            ];
+        });
+
+        // Gestion des erreurs
+        if (isset($result['error'])) {
+            return redirect()->back()->with('error', $result['error']);
         }
 
-        // Charger les relations
-        $proposition->load(['demande.eleve', 'repetiteur.user', 'demande.parent']);
+        $placement   = $result['placement'];
+        $proposition = $result['proposition'];
 
-        $demande = $proposition->demande;
-
-        // Vérifier qu'un placement n'existe pas déjà
-        $placementExiste = Placement::where('demande_id', $demande->id)->exists();
-
-        if ($placementExiste) {
-            return redirect()->back()->with('error', 'Un placement existe déjà pour cette demande.');
-        }
-
-        // 1. Mettre à jour la proposition
-        $proposition->update([
-            'statut'       => 'acceptee',
-            'date_reponse' => now(),
-        ]);
-
-        // 2. Créer le placement
-        $placement = Placement::create([
-            'reference'      => Placement::genererReference(),
-            'demande_id'     => $demande->id,
-            'proposition_id' => $proposition->id,
-            'parent_id'      => $demande->parent_id,
-            'repetiteur_id'  => $proposition->repetiteur_id,
-            'eleve_id'       => $demande->eleve_id,
-            'matiere'        => implode(', ', $demande->matieres ?? []),
-            'adresse'        => $demande->adresse_cours,
-            'date_debut'     => $demande->date_debut_souhaitee ?? now(),
-            'frequence'      => $demande->seances_semaine . ' séance(s) / semaine',
-            'horaires'       => $demande->horaires_disponibles,
-            'tarif_convenu'  => null,
-            'statut'         => 'confirme',
-            'commentaires'   => 'Placement créé par l\'admin ' . auth()->user()->name . '. Message : ' . ($request->message_admin ?? 'Aucun'),
-        ]);
-
-        // 3. Mettre à jour le statut de la demande
-        $demande->update(['statut' => 'placement_confirme']);
-
-        // 4. Notifications
-        $demande->parent->notify(new PropositionValideeAdminNotification($proposition, $request->message_admin));
-        $proposition->repetiteur->user->notify(new PlacementCreeNotification($placement));
+        // 4. Notifications (hors transaction)
+        $proposition->demande->parent->notify(
+            new PropositionValideeAdminNotification($proposition, $request->message_admin)
+        );
+        $proposition->repetiteur->user->notify(
+            new PlacementCreeNotification($placement)
+        );
 
         // 5. Log audit
         AuditLogger::admin('PROPOSITION_VALIDEE_ADMIN',
-            "Validation manuelle de la proposition pour {$proposition->repetiteur->user->name} sur la demande #MM-" . str_pad($demande->id, 4, '0', STR_PAD_LEFT),
+            "Validation manuelle de la proposition pour {$proposition->repetiteur->user->name} sur la demande #MM-" 
+                . str_pad($proposition->demande->id, 4, '0', STR_PAD_LEFT),
             [
                 'proposition_id' => $proposition->id,
-                'placement_id' => $placement->id,
-                'demande_id' => $demande->id,
-                'message_admin' => $request->message_admin,
+                'placement_id'   => $placement->id,
+                'demande_id'     => $proposition->demande->id,
+                'message_admin'  => $request->message_admin,
             ]
         );
 
-        return redirect()->route('admin.matching.rechercher', $demande)
+        return redirect()->route('admin.matching.rechercher', $proposition->demande)
             ->with('success', 'Proposition validée au nom du parent. Le placement a été créé.');
     }
 }

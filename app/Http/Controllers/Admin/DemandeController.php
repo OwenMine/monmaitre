@@ -33,7 +33,10 @@ class DemandeController extends Controller
             });
         }
 
-        $demandes = $query->latest()->paginate(10)->withQueryString();
+        $perPage = (int) $request->get('per_page', 10);
+        $perPage = in_array($perPage, [10, 20, 50]) ? $perPage : 10;
+
+        $demandes = $query->latest()->paginate($perPage)->withQueryString();
 
         $counts = [
             'toutes'    => Demande::count(),

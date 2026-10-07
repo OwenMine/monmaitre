@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Placement ' . $placement->reference)
+@section('title', 'Placement ' . $placement->reference . ' — ' . $placement->eleve->prenom . ' ' . $placement->eleve->nom)
 
 @section('content')
 

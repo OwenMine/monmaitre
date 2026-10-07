@@ -1,6 +1,6 @@
 @extends('layouts.repetiteur')
 
-@section('title', 'Mon profil')
+@section('title', 'Mon profil répétiteur — ' . auth()->user()->name)
 
 @section('content')
 
@@ -344,7 +344,7 @@
 
     {{-- Bouton envoyer candidature --}}
     @if ($repetiteur->statut === 'dossier_incomplet')
-        <form method="POST" action="{{ route('repetiteur.profil.envoyer') }}" class="mt-6 animate-on-scroll">
+        <form method="POST" action="{{ route('repetiteur.profil.candidature.envoyer') }}" class="mt-6 animate-on-scroll">
             @csrf
             <button type="submit"
                 class="w-full bg-green-600 text-white py-3.5 rounded-lg font-semibold hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">

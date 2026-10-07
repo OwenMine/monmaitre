@@ -253,6 +253,14 @@ Voir : https://github.com/sunspikes/clamav-validator
 
 ---
 
+## Sécurité — Vérification XSS
+
+Commande pour vérifier les `{!! !!}` avec user input :
+\`\`\`bash
+findstr /S /I "{!!" resources\views\*.blade.php | findstr /V "vendor"
+\`\`\`
+Tout résultat doit être vérifié manuellement.
+
 ## 🔧 Commandes utiles
 
 ```bash

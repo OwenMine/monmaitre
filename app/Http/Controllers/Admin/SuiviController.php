@@ -34,18 +34,29 @@ class SuiviController extends Controller
         ];
 
         // ============================================
-        // GRAPHIQUE 1 : Évolution des séances (12 dernières semaines)
+        // GRAPHIQUE 1 : Évolution des séances (12 dernières semaines) OPTIMISATION : 1 requête au lieu de 12
         // ============================================
+       
+        $debutGlobal = now()->subWeeks(11)->startOfWeek();
+        $finGlobal   = now()->endOfWeek();
+
+        // Compter les séances par semaine en 1 seule requête
+        $seancesParSemaineDB = Seance::where('statut', 'effectuee')
+            ->whereBetween('date', [$debutGlobal, $finGlobal])
+            ->selectRaw('YEARWEEK(date, 1) as semaine, COUNT(*) as total')
+            ->groupBy('semaine')
+            ->pluck('total', 'semaine')
+            ->toArray();
+
+        // Construire le tableau final (12 semaines)
         $seancesParSemaine = [];
         for ($i = 11; $i >= 0; $i--) {
             $debut = now()->subWeeks($i)->startOfWeek();
-            $fin   = now()->subWeeks($i)->endOfWeek();
+            $semaine = (int) $debut->format('oW'); // Format ISO : année + semaine
 
             $seancesParSemaine[] = [
                 'label' => $debut->format('d/m'),
-                'count' => Seance::where('statut', 'effectuee')
-                    ->whereBetween('date', [$debut, $fin])
-                    ->count(),
+                'count' => $seancesParSemaineDB[$semaine] ?? 0,
             ];
         }
 

@@ -177,3 +177,6 @@ document.addEventListener("DOMContentLoaded", () => {
         window.addEventListener("scroll", handleScroll, { passive: true });
     }
 });
+
+import Chart from "chart.js/auto";
+window.Chart = Chart;

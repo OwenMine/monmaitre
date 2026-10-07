@@ -11,9 +11,9 @@
         <div class="absolute inset-0">
             @php
                 $slides = [
-                    ['image' => asset('images/carousel/slide-1.jpg'), 'fallback' => 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1920&q=80'],
-                    ['image' => asset('images/carousel/slide-2.jpg'), 'fallback' => 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=1920&q=80'],
-                    ['image' => asset('images/carousel/slide-3.jpg'), 'fallback' => 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=1920&q=80'],
+                    ['image' => asset('images/carousel/slide-1.webp'), 'fallback' => 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1920&q=80'],
+                    ['image' => asset('images/carousel/slide-2.webp'), 'fallback' => 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=1920&q=80'],
+                    ['image' => asset('images/carousel/slide-3.webp'), 'fallback' => 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=1920&q=80'],
                 ];
             @endphp
 
@@ -26,8 +26,10 @@
                      x-transition:leave-start="opacity-100 scale-100"
                      x-transition:leave-end="opacity-0 scale-105"
                      class="absolute inset-0">
-                    <img src="{{ $slide['image'] }}" alt="" class="w-full h-full object-cover"
-                         onerror="this.onerror=null; this.src='{{ $slide['fallback'] }}';">
+                    <img src="{{ $slide['image'] }}" alt="" 
+                    class="w-full h-full object-cover"
+                    loading="{{ $i === 0 ? 'eager' : 'lazy' }}"
+                    onerror="this.onerror=null; this.src='{{ $slide['fallback'] }}';">
                 </div>
             @endforeach
 
@@ -142,11 +144,18 @@
         </div>
     </section>
 
-        {{-- ============ SERVICES (avec PARALLAX) ============ --}}
-    <section id="services" class="relative overflow-hidden">
-        <div class="absolute inset-0"
-             style="background-image: url('{{ asset('images/carousel/slide-1.jpg') }}'); background-size: cover; background-position: center; background-attachment: fixed;">
-        </div>
+       {{-- ============ SERVICES (avec PARALLAX optimisé) ============ --}}
+        <section id="services" class="relative py-20 overflow-hidden">
+            <div class="absolute inset-0 will-change-transform"
+                style="
+                    background-image: url('{{ asset('images/carousel/slide-1.jpg') }}');
+                    background-size: cover;
+                    background-position: center;
+                    background-attachment: fixed;
+                    transform: translate3d(0, 0, 0);
+                    backface-visibility: hidden;
+                ">
+            </div>
 
         <div class="absolute inset-0"
              style="background: linear-gradient(135deg, rgba(6, 43, 92, 0.92) 0%, rgba(20, 59, 143, 0.88) 50%, rgba(11, 61, 145, 0.92) 100%);">

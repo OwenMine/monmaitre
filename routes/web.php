@@ -110,9 +110,11 @@ Route::middleware(['auth', 'role:repetiteur'])->prefix('repetiteur')->name('repe
     Route::put('/profil', [RepetiteurProfilController::class, 'update'])
         ->middleware('throttle:repetiteur-actions')
         ->name('profil.update');
-    Route::post('/profil/envoyer', [RepetiteurProfilController::class, 'envoyerCandidature'])
+    
+    // ⚡ D.4 : Route renommée pour cohérence
+    Route::post('/profil/candidature/envoyer', [RepetiteurProfilController::class, 'envoyerCandidature'])
         ->middleware('throttle:repetiteur-actions')
-        ->name('profil.envoyer');
+        ->name('profil.candidature.envoyer');
 
     // Photo
     Route::post('/profil/photo', [RepetiteurProfilController::class, 'uploadPhoto'])
