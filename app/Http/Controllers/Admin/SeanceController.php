@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -7,15 +9,20 @@ use App\Models\Seance;
 use App\Notifications\SeanceValideeNotification;
 use App\Notifications\SeanceValideeAdminNotification;
 use App\Services\AuditLogger;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 
 class SeanceController extends Controller
 {
     /**
      * Liste des séances contestées (pour arbitrage admin).
+     * 🅱️ FONCTIONNALITÉ REPORTÉE — v1.0.2
      */
-    public function conteste()
+    public function conteste(): RedirectResponse
     {
+        return redirect()->route('admin.dashboard')
+            ->with('info', '🚧 La page "Séances contestées" est en cours de développement. Elle sera disponible prochainement.');
+
+        /*
         $seances = Seance::with([
                 'placement.parent',
                 'placement.eleve',
@@ -27,43 +34,37 @@ class SeanceController extends Controller
             ->paginate(15);
 
         return view('admin.seances.conteste', compact('seances'));
+        */
     }
 
     /**
-     * ⚡ ADMIN valide une séance au nom du parent.
-     * Utile quand le parent ne valide pas (oubli, absence, etc.).
+     * ADMIN valide une séance au nom du parent.
      */
-    public function validerParAdmin(Seance $seance)
+    public function validerParAdmin(Seance $seance): RedirectResponse
     {
-        // Vérifier le statut
         if ($seance->statut !== 'en_attente') {
             return redirect()->back()->with('error', 'Cette séance a déjà été traitée.');
         }
 
-        // Charger les relations
         $seance->load(['placement.parent', 'repetiteur.user']);
 
-        // 1. Mettre à jour la séance
         $seance->update([
             'statut'      => 'effectuee',
             'validee_at'  => now(),
             'validee_par' => auth()->id(),
         ]);
 
-        // 2. Notifier le répétiteur
         $seance->repetiteur->user->notify(new SeanceValideeAdminNotification($seance));
-
-        // 3. Notifier le parent (informatif)
         $seance->placement->parent->notify(new SeanceValideeNotification($seance));
 
-        // 4. Log audit
-        AuditLogger::admin('SEANCE_VALIDEE_ADMIN',
+        AuditLogger::admin(
+            'SEANCE_VALIDEE_ADMIN',
             "Validation de la séance du {$seance->date->format('d/m/Y')} pour {$seance->placement->eleve->prenom}",
             [
-                'seance_id' => $seance->id,
-                'placement_id' => $seance->placement_id,
+                'seance_id'     => $seance->id,
+                'placement_id'  => $seance->placement_id,
                 'repetiteur_id' => $seance->repetiteur_id,
-                'date_seance' => $seance->date->format('Y-m-d'),
+                'date_seance'   => $seance->date->format('Y-m-d'),
             ]
         );
 
@@ -73,9 +74,14 @@ class SeanceController extends Controller
 
     /**
      * Admin arbitre : valide la séance contestée (le répétiteur avait raison).
+     * 🅱️ FONCTIONNALITÉ REPORTÉE — v1.0.2
      */
-    public function arbitrerValide(Seance $seance)
+    public function arbitrerValide(Seance $seance): RedirectResponse
     {
+        return redirect()->back()
+            ->with('info', '🚧 L\'arbitrage des séances est en cours de développement. Il sera disponible prochainement.');
+
+        /*
         if ($seance->statut !== 'contested') {
             return redirect()->back()->with('error', 'Cette séance n\'est pas en contestation.');
         }
@@ -87,13 +93,19 @@ class SeanceController extends Controller
 
         return redirect()->back()
             ->with('success', 'Séance validée. Le parent et le répétiteur ont été notifiés.');
+        */
     }
 
     /**
      * Admin arbitre : confirme la contestation (le parent avait raison).
+     * 🅱️ FONCTIONNALITÉ REPORTÉE — v1.0.2
      */
-    public function arbitrerConteste(Seance $seance)
+    public function arbitrerConteste(Seance $seance): RedirectResponse
     {
+        return redirect()->back()
+            ->with('info', '🚧 L\'arbitrage des séances est en cours de développement. Il sera disponible prochainement.');
+
+        /*
         if ($seance->statut !== 'contested') {
             return redirect()->back()->with('error', 'Cette séance n\'est pas en contestation.');
         }
@@ -105,5 +117,6 @@ class SeanceController extends Controller
 
         return redirect()->back()
             ->with('success', 'Contestation confirmée. La séance a été annulée.');
+        */
     }
 }

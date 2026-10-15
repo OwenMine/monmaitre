@@ -1,17 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Demande;
 use App\Notifications\DemandeStatutChangeNotification;
 use App\Services\AuditLogger;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-
+use Illuminate\View\View;
 
 class DemandeController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $query = Demande::with(['parent', 'eleve']);
 
@@ -49,14 +52,14 @@ class DemandeController extends Controller
         return view('admin.demandes.index', compact('demandes', 'counts'));
     }
 
-    public function show(Demande $demande)
+    public function show(Demande $demande): View
     {
-        $demande->load(['parent', 'eleve']);
+        $demande->load(['parent', 'eleve', 'propositions.repetiteur.user', 'placement']);
 
         return view('admin.demandes.show', compact('demande'));
     }
 
-    public function changerStatut(Request $request, Demande $demande)
+    public function changerStatut(Request $request, Demande $demande): RedirectResponse
     {
         $request->validate([
             'statut' => 'required|in:dossier_incomplet,dossier_complet,demande_envoyee,en_analyse,recherche_repetiteur,repetiteur_identifie,repetiteur_contacte,attente_confirmation_parent,placement_confirme,en_cours,termine,annule,remplacement_demande',
@@ -69,12 +72,13 @@ class DemandeController extends Controller
             $demande->parent->notify(new DemandeStatutChangeNotification($demande));
         }
 
-        AuditLogger::admin('DEMANDE_STATUT_CHANGE',
-            "Changement de statut demande #MM-" . str_pad($demande->id, 4, '0', STR_PAD_LEFT) . " : {$ancienStatut} → {$request->statut}",
+        AuditLogger::admin(
+            'DEMANDE_STATUT_CHANGE',
+            "Changement de statut demande #MM-" . str_pad((string) $demande->id, 4, '0', STR_PAD_LEFT) . " : {$ancienStatut} → {$request->statut}",
             [
-                'demande_id' => $demande->id,
-                'parent_id' => $demande->parent_id,
-                'ancien_statut' => $ancienStatut,
+                'demande_id'     => $demande->id,
+                'parent_id'      => $demande->parent_id,
+                'ancien_statut'  => $ancienStatut,
                 'nouveau_statut' => $request->statut,
             ]
         );

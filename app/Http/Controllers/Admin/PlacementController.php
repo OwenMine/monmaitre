@@ -1,16 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Placement;
 use App\Services\AuditLogger;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PlacementController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $query = Placement::with(['parent', 'repetiteur.user', 'eleve']);
 
@@ -44,14 +48,16 @@ class PlacementController extends Controller
         return view('admin.placements.index', compact('placements', 'counts'));
     }
 
-    public function show(Placement $placement)
+    public function show(Placement $placement): View
     {
         $this->authorize('view', $placement);
+
+        $placement->load(['parent', 'eleve', 'repetiteur.user', 'demande', 'evaluation', 'seances.valideePar']);
 
         return view('admin.placements.show', compact('placement'));
     }
 
-    public function update(Request $request, Placement $placement)
+    public function update(Request $request, Placement $placement): RedirectResponse
     {
         $data = $request->validate([
             'statut'        => 'required|in:en_attente,confirme,en_cours,evaluation,termine,remplacement,annule',
@@ -62,11 +68,12 @@ class PlacementController extends Controller
         $ancienStatut = $placement->statut;
         $placement->update($data);
 
-        AuditLogger::admin('PLACEMENT_UPDATE',
+        AuditLogger::admin(
+            'PLACEMENT_UPDATE',
             "Mise à jour du placement {$placement->reference}",
             [
-                'placement_id' => $placement->id,
-                'ancien_statut' => $ancienStatut,
+                'placement_id'   => $placement->id,
+                'ancien_statut'  => $ancienStatut,
                 'nouveau_statut' => $data['statut'],
             ]
         );
@@ -77,7 +84,7 @@ class PlacementController extends Controller
     /**
      * Export CSV des placements (respecte les filtres actifs).
      */
-    public function export(Request $request)
+    public function export(Request $request): StreamedResponse
     {
         $query = Placement::with(['parent', 'repetiteur.user', 'eleve', 'evaluation'])
             ->withCount([
@@ -85,7 +92,6 @@ class PlacementController extends Controller
                 'seances as seances_total_count',
             ]);
 
-        // Appliquer les mêmes filtres que l'index
         if ($request->filled('statut')) {
             $query->where('statut', $request->statut);
         }
@@ -106,10 +112,8 @@ class PlacementController extends Controller
 
         $placements = $query->latest()->get();
 
-        // Nom du fichier
         $filename = 'placements_' . now()->format('Y-m-d_His') . '.csv';
 
-        // Headers HTTP pour forcer le téléchargement
         $headers = [
             'Content-Type'        => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -118,36 +122,28 @@ class PlacementController extends Controller
             'Expires'             => '0',
         ];
 
+        AuditLogger::admin(
+            'EXPORT_CSV',
+            "Export CSV des placements ({$placements->count()} lignes)",
+            [
+                'nombre_lignes' => $placements->count(),
+                'filtres'       => $request->only(['statut', 'q']),
+            ]
+        );
+
         $callback = function () use ($placements) {
             $file = fopen('php://output', 'w');
 
             // BOM UTF-8 pour Excel (accents corrects)
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-            // En-tête
             fputcsv($file, [
-                'Référence',
-                'Date création',
-                'Statut',
-                'Parent',
-                'Téléphone parent',
-                'Élève',
-                'Classe',
-                'Répétiteur',
-                'Téléphone répétiteur',
-                'Matière',
-                'Adresse',
-                'Date début',
-                'Fréquence',
-                'Horaires',
-                'Tarif convenu (FCFA)',
-                'Séances effectuées',
-                'Séances totales',
-                'Note évaluation',
-                'Commentaires',
+                'Référence', 'Date création', 'Statut', 'Parent', 'Téléphone parent',
+                'Élève', 'Classe', 'Répétiteur', 'Téléphone répétiteur', 'Matière',
+                'Adresse', 'Date début', 'Fréquence', 'Horaires', 'Tarif convenu (FCFA)',
+                'Séances effectuées', 'Séances totales', 'Note évaluation', 'Commentaires',
             ], ';');
 
-            // Lignes
             foreach ($placements as $p) {
                 fputcsv($file, [
                     $p->reference,
@@ -164,7 +160,7 @@ class PlacementController extends Controller
                     $p->date_debut?->format('d/m/Y') ?? '',
                     $p->frequence ?? '',
                     $p->horaires ?? '',
-                    $p->tarif_convenu ? number_format($p->tarif_convenu, 0, ',', '') : '',
+                    $p->tarif_convenu ? number_format((float) $p->tarif_convenu, 0, ',', '') : '',
                     $p->seances_effectuees_count,
                     $p->seances_total_count,
                     $p->evaluation?->note ?? '',
@@ -174,13 +170,6 @@ class PlacementController extends Controller
 
             fclose($file);
         };
-        AuditLogger::admin('EXPORT_CSV',
-        "Export CSV des placements ({$placements->count()} lignes)",
-        [
-            'nombre_lignes' => $placements->count(),
-            'filtres' => $request->only(['statut', 'q']),
-        ]
-        );
 
         return response()->stream($callback, 200, $headers);
     }

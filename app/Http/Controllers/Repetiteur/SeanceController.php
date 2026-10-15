@@ -1,16 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Repetiteur;
 
 use App\Http\Controllers\Controller;
 use App\Models\Placement;
 use App\Models\Seance;
 use App\Notifications\NouvelleSeanceNotification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class SeanceController extends Controller
 {
-    public function index(Placement $placement)
+    public function index(Placement $placement): View
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -25,7 +29,7 @@ class SeanceController extends Controller
         return view('repetiteur.seances.index', compact('placement', 'seances'));
     }
 
-    public function create(Placement $placement)
+    public function create(Placement $placement): View
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -36,7 +40,7 @@ class SeanceController extends Controller
         return view('repetiteur.seances.create', compact('placement'));
     }
 
-    public function store(Request $request, Placement $placement)
+    public function store(Request $request, Placement $placement): RedirectResponse
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -55,15 +59,12 @@ class SeanceController extends Controller
         $data['placement_id']  = $placement->id;
         $data['repetiteur_id'] = $repetiteur->id;
 
-        // ⚡ Si le statut est "effectuee", il passe en "en_attente" (validation par le parent)
-        // Les autres statuts (absence, annulée) sont acceptés directement
         if ($data['statut'] === 'effectuee') {
             $data['statut'] = 'en_attente';
         }
 
         $seance = Seance::create($data);
 
-        // 🔔 Notifier le parent (uniquement pour les séances en attente)
         if ($seance->statut === 'en_attente') {
             $placement->parent->notify(new NouvelleSeanceNotification($seance));
         }
@@ -72,7 +73,7 @@ class SeanceController extends Controller
             ->with('success', 'Séance enregistrée. Elle sera validée par le parent.');
     }
 
-    public function destroy(Seance $seance)
+    public function destroy(Seance $seance): RedirectResponse
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -80,7 +81,6 @@ class SeanceController extends Controller
             abort(403);
         }
 
-        // Sécurité : on ne supprime que les séances en attente
         if (! $seance->estEnAttente()) {
             return redirect()->back()
                 ->with('error', 'Vous ne pouvez supprimer qu\'une séance en attente de validation.');

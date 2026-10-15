@@ -1,15 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PushSubscriptionController extends Controller
 {
-    /**
-     * Retourne la clé publique VAPID (pour que le navigateur puisse s'abonner).
-     */
     public function publicKey(): JsonResponse
     {
         return response()->json([
@@ -17,9 +16,6 @@ class PushSubscriptionController extends Controller
         ]);
     }
 
-    /**
-     * Enregistre un nouvel abonnement push.
-     */
     public function subscribe(Request $request): JsonResponse
     {
         $request->validate([
@@ -30,7 +26,6 @@ class PushSubscriptionController extends Controller
 
         $user = $request->user();
 
-        // Vérifier si l'abonnement existe déjà
         $exists = $user->pushSubscriptions()
             ->where('endpoint', $request->endpoint)
             ->exists();
@@ -42,7 +37,6 @@ class PushSubscriptionController extends Controller
             ]);
         }
 
-        // Créer l'abonnement
         $user->updatePushSubscription(
             $request->endpoint,
             $request->keys['p256dh'],
@@ -56,9 +50,6 @@ class PushSubscriptionController extends Controller
         ]);
     }
 
-    /**
-     * Supprime un abonnement push.
-     */
     public function unsubscribe(Request $request): JsonResponse
     {
         $request->validate([

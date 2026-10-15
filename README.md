@@ -19,6 +19,40 @@
 
 ---
 
+## 📸 Aperçu
+
+### 🏠 Page d'accueil
+
+![Page d'accueil](docs/screenshots/01-accueil.png)
+_*Hero avec carousel, sections Services, FAQ, Contact*_
+
+### 🛡️ Dashboard Admin
+
+![Dashboard admin](docs/screenshots/02-admin-dashboard.png)
+_*KPI, dernières demandes, derniers répétiteurs*_
+
+### 👨‍👩‍👧 Espace Parent
+
+![Espace parent](docs/screenshots/03-parent-dashboard.png)
+_*Suivi des demandes, propositions, placements*_
+
+### 👨‍🏫 Espace Répétiteur
+
+![Espace répétiteur](docs/screenshots/04-repetiteur-dashboard.png)
+_*Profil, missions, séances, statistiques*_
+
+### 📱 Version mobile
+
+![Version mobile](docs/screenshots/05-mobile.png)
+_*Interface responsive et PWA installable*_
+
+### 🔔 Notifications Push
+
+![Notifications](docs/screenshots/06-notifications.png)
+_*Notifications in-app + push VAPID*_
+
+---
+
 ## 🎯 À propos
 
 **MON MAÎTRE** est une plateforme ivoirienne de mise en relation entre **parents** et **répétiteurs à domicile**.
@@ -55,15 +89,16 @@ Le service fonctionne en **placement assisté** : les parents décrivent leur be
 - 🎯 Système de matching intelligent (score 0-100)
 - 💼 Créer et suivre les propositions
 - 📈 Dashboard de suivi des placements avec alertes
-- ⚖️ Arbitrer les séances contestées
 - 📥 Exporter les placements en CSV
 
 ### 🔔 Transversal
 
 - Notifications in-app avec badge compteur
 - Login unifié (email OU téléphone)
-- Pages d'erreur personnalisées
-- Sécurité renforcée (rate limiting, headers HTTP)
+- Pages d'erreur personnalisées (404, 403, 500…)
+- Sécurité renforcée (rate limiting, headers HTTP, CSP)
+- PWA installable (iOS, Android)
+- Notifications push VAPID
 
 ---
 
@@ -75,10 +110,11 @@ Le service fonctionne en **placement assisté** : les parents décrivent leur be
 | **PHP**             | 8.3+                                 |
 | **Base de données** | MySQL (prod) / SQLite (dev)          |
 | **Frontend**        | Blade + Alpine.js 3 + Tailwind CSS 3 |
-| **Build**           | Vite                                 |
+| **Build**           | Vite 8                               |
 | **Auth**            | Laravel Breeze (personnalisé)        |
 | **Rôles**           | Spatie Laravel Permission v8         |
 | **Graphiques**      | Chart.js 4                           |
+| **Push**            | WebPush + VAPID                      |
 
 ---
 
@@ -120,7 +156,7 @@ php artisan key:generate
 # 7. Lancer les migrations + seeders
 php artisan migrate --seed
 
-# 8. Créer le lien storage (pour les photos/documents)
+# 8. Créer le lien storage
 php artisan storage:link
 
 # 9. Compiler les assets
@@ -129,241 +165,3 @@ npm run build
 # 10. Lancer le serveur
 php artisan serve
 ```
-
-L'application sera accessible sur **`http://localhost:8000`**
-
----
-
-## 🔑 Comptes de test
-
-| Rôle           | Identifiant                  | Mot de passe     |
-| -------------- | ---------------------------- | ---------------- |
-| **Admin**      | `admin@monmaitre.ci`         | `MonMaitre2026!` |
-| **Parent**     | `0701020304` (téléphone)     | `password123`    |
-| **Répétiteur** | `jean.koffi@test.ci` (email) | `password123`    |
-
-> ⚠️ **Important** : Changez ces identifiants **avant la mise en production** !
-
----
-
-## 📁 Structure du projet
-
-```
-monmaitre/
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Admin/                → Espace admin (MON MAÎTRE)
-│   │   │   ├── Auth/                 → Authentification (Breeze modifié)
-│   │   │   ├── ParentSpace/          → Espace parent
-│   │   │   ├── Repetiteur/           → Espace répétiteur
-│   │   │   ├── NotificationController.php
-│   │   │   ├── PreInscriptionController.php
-│   │   │   ├── ProfileController.php
-│   │   │   └── PublicController.php
-│   │   ├── Middleware/
-│   │   │   └── SecurityHeaders.php
-│   │   └── Requests/                 → Validation des formulaires
-│   ├── Models/
-│   │   ├── User.php
-│   │   ├── Eleve.php
-│   │   ├── Demande.php
-│   │   ├── Repetiteur.php
-│   │   ├── Document.php
-│   │   ├── Proposition.php
-│   │   ├── Placement.php
-│   │   ├── Seance.php
-│   │   └── Evaluation.php
-│   ├── Notifications/                → 8 classes Notification
-│   ├── Services/
-│   │   └── MatchingService.php       → Algorithme de matching
-│   └── Providers/
-│       └── AppServiceProvider.php
-│
-├── database/
-│   ├── migrations/                   → Toutes les migrations
-│   └── seeders/
-│       ├── DatabaseSeeder.php
-│       ├── RoleSeeder.php
-│       └── AdminSeeder.php
-│
-├── resources/
-│   ├── css/
-│   │   └── app.css                   → Tailwind + composants custom
-│   ├── js/
-│   │   └── app.js                    → Alpine.js + scripts
-│   └── views/
-│       ├── admin/                    → Vues espace admin
-│       ├── auth/                     → Login, register, reset
-│       ├── components/               → Composants Blade réutilisables
-│       │   └── icons/                → 18 icônes SVG
-│       ├── errors/                   → 404, 403, 500, 419, 503
-│       ├── layouts/                  → 5 layouts principaux
-│       ├── notifications/            → Page notifications
-│       ├── parent/                   → Vues espace parent
-│       ├── pre-inscription/          → Formulaires publics
-│       ├── profile/                  → Profil Breeze
-│       ├── public/                   → Page d'accueil
-│       └── repetiteur/               → Vues espace répétiteur
-│
-├── routes/
-│   ├── web.php                       → Routes principales
-│   └── auth.php                      → Routes authentification
-│
-└── public/
-    ├── images/
-    │   ├── logo-full.png             → Logo complet
-    │   ├── logo-icon.png             → Icône seule
-    │   └── carousel/                 → Images carousel
-    └── build/                        → Assets compilés
-```
-
----
-
-## 🎨 Charte graphique
-
-### Palette officielle
-
-| Rôle                | HEX       | Utilisation         |
-| ------------------- | --------- | ------------------- |
-| **Bleu principal**  | `#0B3D91` | Marque, titres      |
-| **Bleu marine**     | `#062B5C` | Fonds foncés, admin |
-| **Bleu secondaire** | `#143B8F` | Répétiteur, boutons |
-| **Or / Doré**       | `#F5A623` | Accents, CTA        |
-| **Blanc**           | `#FFFFFF` | Fond, contraste     |
-| **Anthracite**      | `#1E1E1E` | Texte foncé         |
-| **Gris clair**      | `#F5F6FA` | Fonds de pages      |
-
-### Typographie
-
-- **Police** : Inter (Google Fonts)
-- **Poids** : 400, 500, 600, 700, 800
-
-### Différenciation des espaces
-
-- 🔵 **Admin** : header navy foncé
-- 🔵 **Parent** : header blanc + accents navy
-- 🔷 **Répétiteur** : header blanc + accents bleu vif
-- ⚪ **Public** : header blanc + logo complet
-
-## Sécurité - Scan antivirus
-
-En production, installer ClamAV pour scanner tous les fichiers uploadés.
-Voir : https://github.com/sunspikes/clamav-validator
-
----
-
-## Sécurité — Vérification XSS
-
-Commande pour vérifier les `{!! !!}` avec user input :
-\`\`\`bash
-findstr /S /I "{!!" resources\views\*.blade.php | findstr /V "vendor"
-\`\`\`
-Tout résultat doit être vérifié manuellement.
-
-## 🔧 Commandes utiles
-
-```bash
-# Développement (assets + serveur)
-npm run dev
-php artisan serve
-
-# Production (assets compilés)
-npm run build
-php artisan optimize
-
-# Vider les caches
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
-php artisan cache:clear
-php artisan optimize:clear
-
-# Base de données
-php artisan migrate
-php artisan migrate:fresh --seed
-php artisan db:seed --class=RoleSeeder
-
-# Storage
-php artisan storage:link
-
-# Notifications (nettoyage)
-php artisan tinker --execute="DB::table('notifications')->truncate();"
-```
-
----
-
-## 🔐 Sécurité
-
-### Mesures en place
-
-- ✅ **Rate limiting** sur le login (5 tentatives / minute)
-- ✅ **Rate limiting** sur la pré-inscription (5 tentatives / heure / IP)
-- ✅ **Rate limiting** sur les formulaires sensibles (30 / heure)
-- ✅ **Headers HTTP** de sécurité (X-Frame-Options, HSTS, etc.)
-- ✅ **HTTPS forcé** en production
-- ✅ **Vérification d'ownership** sur toutes les actions sensibles
-- ✅ **Mots de passe hachés** (BCRYPT 12 rounds)
-- ✅ **Protection CSRF** sur tous les formulaires
-
-### Recommandations production
-
-- ⚠️ Changer les mots de passe par défaut
-- ⚠️ Utiliser HTTPS (Let's Encrypt)
-- ⚠️ Sauvegardes automatiques de la BDD
-- ⚠️ Configurer un SMTP réel (Mailgun, Gmail, Brevo…)
-- ⚠️ Activer les logs d'erreurs (Sentry, Bugsnag)
-
----
-
-## 🚢 Déploiement en production
-
-### Checklist avant mise en ligne
-
-- [ ] `.env` configuré (`APP_ENV=production`, `APP_DEBUG=false`)
-- [ ] Base de données MySQL créée et configurée
-- [ ] **Mot de passe admin changé**
-- [ ] Numéros de téléphone vérifiés
-- [ ] SMTP configuré
-- [ ] `php artisan migrate --force`
-- [ ] `php artisan storage:link`
-- [ ] `npm run build`
-- [ ] `php artisan optimize`
-- [ ] HTTPS activé
-- [ ] Sauvegardes configurées
-
-### Commandes de déploiement
-
-```bash
-git pull origin main
-composer install --no-dev --optimize-autoloader
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-npm ci && npm run build
-php artisan optimize
-```
-
----
-
-## 📞 Support & Contact
-
-- 📱 **Téléphone** : [07 19 16 76 88](tel:+2250719167688)
-- 💬 **WhatsApp** : [Discuter](https://wa.me/2250719167688)
-- 📧 **Email** : [contact@monmaitre.ci](mailto:contact@monmaitre.ci)
-- 🌍 **Pays** : Côte d'Ivoire
-
----
-
-## 📄 Licence
-
-**© 2026 MON MAÎTRE** — Tous droits réservés.
-
-Ce logiciel est propriétaire. Toute reproduction, distribution ou utilisation non autorisée est interdite.
-
----
-
-<p align="center">
-    Fait avec  en Côte d'Ivoire
-</p>

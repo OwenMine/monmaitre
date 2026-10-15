@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -9,23 +11,21 @@ use App\Models\Proposition;
 use App\Models\Repetiteur;
 use App\Notifications\NouvellePropositionNotification;
 use App\Notifications\PlacementCreeNotification;
-use App\Notifications\PropositionAccepteeNotification;
 use App\Notifications\PropositionValideeAdminNotification;
 use App\Services\AuditLogger;
 use App\Services\MatchingService;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class MatchingController extends Controller
 {
-    protected MatchingService $matching;
+    public function __construct(
+        protected MatchingService $matching
+    ) {}
 
-    public function __construct(MatchingService $matching)
-    {
-        $this->matching = $matching;
-    }
-
-    public function rechercher(Demande $demande)
+    public function rechercher(Demande $demande): View
     {
         $demande->load(['parent', 'eleve']);
 
@@ -35,7 +35,6 @@ class MatchingController extends Controller
             ->pluck('repetiteur_id')
             ->toArray();
 
-        // Récupérer les propositions avec leur statut
         $propositions = Proposition::where('demande_id', $demande->id)
             ->with(['repetiteur.user'])
             ->get()
@@ -49,7 +48,7 @@ class MatchingController extends Controller
         ));
     }
 
-    public function resultats(Request $request, Demande $demande)
+    public function resultats(Request $request, Demande $demande): View
     {
         $demande->load(['parent', 'eleve']);
 
@@ -75,7 +74,7 @@ class MatchingController extends Controller
         ));
     }
 
-    public function proposer(Request $request, Demande $demande, Repetiteur $repetiteur)
+    public function proposer(Request $request, Demande $demande, Repetiteur $repetiteur): RedirectResponse
     {
         $request->validate([
             'message' => 'nullable|string|max:1000',
@@ -100,16 +99,15 @@ class MatchingController extends Controller
 
         $demande->update(['statut' => 'attente_confirmation_parent']);
 
-        // Notification au parent
         $demande->parent->notify(new NouvellePropositionNotification($proposition));
 
-        // Log audit
-        AuditLogger::admin('PROPOSITION_CREEE',
-            "Proposition du répétiteur {$repetiteur->user->name} pour la demande #MM-" . str_pad($demande->id, 4, '0', STR_PAD_LEFT),
+        AuditLogger::admin(
+            'PROPOSITION_CREEE',
+            "Proposition du répétiteur {$repetiteur->user->name} pour la demande #MM-" . str_pad((string) $demande->id, 4, '0', STR_PAD_LEFT),
             [
                 'proposition_id' => $proposition->id,
-                'demande_id' => $demande->id,
-                'repetiteur_id' => $repetiteur->id,
+                'demande_id'     => $demande->id,
+                'repetiteur_id'  => $repetiteur->id,
             ]
         );
 
@@ -118,31 +116,27 @@ class MatchingController extends Controller
     }
 
     /**
-     * ⚡ ADMIN valide la proposition au nom du parent.
+     * ADMIN valide la proposition au nom du parent.
      * Utile quand le parent accepte par téléphone mais ne clique pas sur la plateforme.
      */
-    public function validerParAdmin(Request $request, Proposition $proposition)
+    public function validerParAdmin(Request $request, Proposition $proposition): RedirectResponse
     {
         $request->validate([
             'message_admin' => 'nullable|string|max:1000',
         ]);
 
         // ⚡ B.3 : Transaction + lock pour éviter la race condition
-        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($proposition, $request) {
-            
-            // Recharger la proposition avec un lock exclusif
+        $result = DB::transaction(function () use ($proposition, $request) {
             $proposition = Proposition::lockForUpdate()->find($proposition->id);
 
             if (! $proposition) {
                 return ['error' => 'Proposition introuvable.'];
             }
 
-            // Vérifier le statut
             if (! in_array($proposition->statut, ['proposee', 'refusee'])) {
                 return ['error' => 'Cette proposition a déjà été traitée.'];
             }
 
-            // Charger les relations
             $proposition->load(['demande.eleve', 'demande.parent', 'repetiteur.user']);
 
             // ⚡ B.2 : Vérifier que le répétiteur est toujours valide
@@ -156,18 +150,15 @@ class MatchingController extends Controller
 
             $demande = $proposition->demande;
 
-            // Vérifier qu'un placement n'existe pas déjà
             if (Placement::where('demande_id', $demande->id)->exists()) {
                 return ['error' => 'Un placement existe déjà pour cette demande.'];
             }
 
-            // 1. Mettre à jour la proposition
             $proposition->update([
                 'statut'       => 'acceptee',
                 'date_reponse' => now(),
             ]);
 
-            // 2. Créer le placement
             $placement = Placement::create([
                 'reference'      => Placement::genererReference(),
                 'demande_id'     => $demande->id,
@@ -184,21 +175,19 @@ class MatchingController extends Controller
                 'horaires'       => $demande->horaires_disponibles,
                 'tarif_convenu'  => null,
                 'statut'         => 'confirme',
-                'commentaires'   => 'Placement créé par l\'admin ' . auth()->user()->name 
+                'commentaires'   => 'Placement créé par l\'admin ' . auth()->user()->name
                     . '. Message : ' . ($request->message_admin ?? 'Aucun'),
             ]);
 
-            // 3. Mettre à jour le statut de la demande
             $demande->update(['statut' => 'placement_confirme']);
 
             return [
-                'success'   => true,
-                'placement' => $placement,
+                'success'     => true,
+                'placement'   => $placement,
                 'proposition' => $proposition,
             ];
         });
 
-        // Gestion des erreurs
         if (isset($result['error'])) {
             return redirect()->back()->with('error', $result['error']);
         }
@@ -206,7 +195,6 @@ class MatchingController extends Controller
         $placement   = $result['placement'];
         $proposition = $result['proposition'];
 
-        // 4. Notifications (hors transaction)
         $proposition->demande->parent->notify(
             new PropositionValideeAdminNotification($proposition, $request->message_admin)
         );
@@ -214,10 +202,10 @@ class MatchingController extends Controller
             new PlacementCreeNotification($placement)
         );
 
-        // 5. Log audit
-        AuditLogger::admin('PROPOSITION_VALIDEE_ADMIN',
-            "Validation manuelle de la proposition pour {$proposition->repetiteur->user->name} sur la demande #MM-" 
-                . str_pad($proposition->demande->id, 4, '0', STR_PAD_LEFT),
+        AuditLogger::admin(
+            'PROPOSITION_VALIDEE_ADMIN',
+            "Validation manuelle de la proposition pour {$proposition->repetiteur->user->name} sur la demande #MM-"
+                . str_pad((string) $proposition->demande->id, 4, '0', STR_PAD_LEFT),
             [
                 'proposition_id' => $proposition->id,
                 'placement_id'   => $placement->id,

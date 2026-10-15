@@ -53,11 +53,24 @@
                     <input type="number" name="eleve_age" value="{{ old('eleve_age') }}" min="3" max="30"
                         class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-mm-secondary focus:ring-2 focus:ring-mm-secondary/20 transition">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Classe *</label>
-                    <input type="text" name="eleve_classe" value="{{ old('eleve_classe') }}" required
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium mb-2">Classe de l'élève *</label>
+
+                    {{-- Boutons de sélection rapide --}}
+                    <div class="mb-3 flex flex-wrap gap-2">
+                        @foreach(['CP', 'CE1', 'CE2', 'CM1', 'CM2', '6e', '5e', '4e', '3e', '2nde', '1ère', 'Terminale'] as $classe)
+                            <button type="button"
+                                onclick="setClasseEleve('{{ $classe }}')"
+                                class="text-xs font-semibold px-3 py-1.5 rounded-md bg-mm-secondary/10 text-mm-secondary hover:bg-mm-secondary hover:text-white transition-all duration-200">
+                                {{ $classe }}
+                            </button>
+                        @endforeach
+                    </div>
+
+                    <input type="text" name="eleve_classe" id="eleve_classe_input" value="{{ old('eleve_classe') }}" required
                         placeholder="6e, 3e, Terminale..."
                         class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-mm-secondary focus:ring-2 focus:ring-mm-secondary/20 transition">
+                    <p class="text-xs text-gray-400 mt-1.5">Cliquez sur un bouton ou tapez directement.</p>
                 </div>
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1">Établissement</label>
@@ -179,8 +192,7 @@
             ENVOYER MA DEMANDE
         </button>
     </form>
-
-    {{-- Script : ajout rapide de matières --}}
+    {{-- Script : ajout rapide de matières + sélection de classe --}}
     <script>
         function addMatiere(matiere) {
             const textarea = document.getElementById('matieres_text');
@@ -190,6 +202,11 @@
             if (!matieres.includes(matiere)) {
                 textarea.value = current ? current + '\n' + matiere : matiere;
             }
+        }
+
+        // Sélection rapide de la classe (remplace la valeur — une seule classe par élève)
+        function setClasseEleve(classe) {
+            document.getElementById('eleve_classe_input').value = classe;
         }
     </script>
 

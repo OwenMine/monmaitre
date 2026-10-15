@@ -1,30 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Repetiteur;
 
 use App\Http\Controllers\Controller;
 use App\Models\Seance;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $repetiteur = auth()->user()->repetiteur;
 
-        // Si l'utilisateur n'a pas de profil répétiteur
         if (! $repetiteur) {
             return view('repetiteur.dashboard', [
-                'repetiteur' => null,
-                'stats'      => null,
+                'repetiteur'        => null,
+                'stats'             => null,
                 'seancesParSemaine' => [],
                 'badges'            => [],
                 'dernieresMissions' => collect(),
             ]);
         }
 
-        // ============================================
-        // STATS GLOBALES
-        // ============================================
         $missionsActives = $repetiteur->placements()
             ->whereIn('statut', ['confirme', 'en_cours'])
             ->count();
@@ -32,7 +31,7 @@ class DashboardController extends Controller
         $missionsTotal = $repetiteur->placements()->count();
 
         // ⚡ D.2 : Stats agrégées en 1 requête
-        $statsGlobales = \App\Models\Seance::where('repetiteur_id', $repetiteur->id)
+        $statsGlobales = Seance::where('repetiteur_id', $repetiteur->id)
             ->selectRaw("
                 COUNT(*) as total,
                 SUM(CASE WHEN statut = 'effectuee' THEN 1 ELSE 0 END) as effectuees,
@@ -45,22 +44,17 @@ class DashboardController extends Controller
         $seancesEffectuees = (int) $statsGlobales->effectuees;
         $seancesEnAttente  = (int) $statsGlobales->en_attente;
         $absences          = (int) $statsGlobales->absences;
-        $heuresTotales     = round($statsGlobales->minutes / 60, 1);
+        $heuresTotales     = round((float) $statsGlobales->minutes / 60, 1);
         $totalSeances      = (int) $statsGlobales->total;
         $tauxPresence      = $totalSeances > 0
             ? round(($seancesEffectuees / $totalSeances) * 100, 1)
             : 0.0;
 
-        $noteMoyenne = $repetiteur->evaluations()->avg('note') ?? 0;
-        $noteMoyenne = round($noteMoyenne, 1);
-
+        $noteMoyenne = round((float) ($repetiteur->evaluations()->avg('note') ?? 0), 1);
         $nbEvaluations = $repetiteur->evaluations()->count();
-
         $revenusEstimes = $seancesEffectuees * 5000;
 
-        // ============================================
-        // GRAPHIQUE
-        // ============================================
+        // Graphique
         $seancesParSemaine = [];
         for ($i = 3; $i >= 0; $i--) {
             $debut = now()->subWeeks($i)->startOfWeek();
@@ -75,9 +69,7 @@ class DashboardController extends Controller
             ];
         }
 
-        // ============================================
-        // BADGES
-        // ============================================
+        // Badges
         $badges = [];
 
         if ($seancesEffectuees >= 10) {
@@ -96,29 +88,23 @@ class DashboardController extends Controller
             $badges[] = ['icon' => 'user-circle', 'label' => 'Expérimenté', 'color' => 'mm-navy'];
         }
 
-        // ============================================
-        // DERNIÈRES MISSIONS
-        // ============================================
         $dernieresMissions = $repetiteur->placements()
             ->with(['parent', 'eleve'])
             ->latest()
             ->limit(3)
             ->get();
 
-        // ============================================
-        // STATS FINALES
-        // ============================================
         $stats = [
-            'missions_actives'    => $missionsActives,
-            'missions_total'      => $missionsTotal,
-            'seances_effectuees'  => $seancesEffectuees,
-            'seances_en_attente'  => $seancesEnAttente,
-            'heures_totales'      => $heuresTotales,
-            'absences'            => $absences,
-            'taux_presence'       => $tauxPresence,
-            'note_moyenne'        => $noteMoyenne,
-            'nb_evaluations'      => $nbEvaluations,
-            'revenus_estimes'     => $revenusEstimes,
+            'missions_actives'   => $missionsActives,
+            'missions_total'     => $missionsTotal,
+            'seances_effectuees' => $seancesEffectuees,
+            'seances_en_attente' => $seancesEnAttente,
+            'heures_totales'     => $heuresTotales,
+            'absences'           => $absences,
+            'taux_presence'      => $tauxPresence,
+            'note_moyenne'       => $noteMoyenne,
+            'nb_evaluations'     => $nbEvaluations,
+            'revenus_estimes'    => $revenusEstimes,
         ];
 
         return view('repetiteur.dashboard', compact(

@@ -1,18 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\PreInscriptionController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Admin\DemandeController as AdminDemandeController;
 use App\Http\Controllers\Admin\RepetiteurController as AdminRepetiteurController;
+use App\Http\Controllers\Admin\MatchingController as AdminMatchingController;
+use App\Http\Controllers\Admin\PlacementController as AdminPlacementController;
+use App\Http\Controllers\Admin\SeanceController as AdminSeanceController;
+use App\Http\Controllers\Admin\SuiviController as AdminSuiviController;
 use App\Http\Controllers\ParentSpace\DashboardController as ParentDashboard;
 use App\Http\Controllers\ParentSpace\DemandeController as ParentDemandeController;
+use App\Http\Controllers\ParentSpace\PropositionController as ParentPropositionController;
+use App\Http\Controllers\ParentSpace\PlacementController as ParentPlacementController;
+use App\Http\Controllers\ParentSpace\SeanceController as ParentSeanceController;
 use App\Http\Controllers\Repetiteur\DashboardController as RepetiteurDashboard;
 use App\Http\Controllers\Repetiteur\ProfilController as RepetiteurProfilController;
-use App\Http\Controllers\Admin\MatchingController as AdminMatchingController;
-use App\Http\Controllers\ParentSpace\PropositionController as ParentPropositionController;
-use App\Http\Controllers\Admin\PlacementController as AdminPlacementController;
-use App\Http\Controllers\ParentSpace\PlacementController as ParentPlacementController;
 use App\Http\Controllers\Repetiteur\PlacementController as RepetiteurPlacementController;
 use App\Http\Controllers\Repetiteur\SeanceController as RepetiteurSeanceController;
 use Illuminate\Support\Facades\Route;
@@ -25,8 +32,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PublicController::class, 'accueil'])->name('accueil');
 
-// Servir les photos de profil des répétiteurs (contourne les soucis de symlink Windows)
+// Photo de profil répétiteur
 Route::get('/photo-repetiteur/{repetiteur}', [PublicController::class, 'photoRepetiteur'])
+    ->middleware('throttle:120,1')
     ->name('repetiteur.photo');
 
 // Page hors ligne (PWA)
@@ -84,14 +92,14 @@ Route::middleware(['auth', 'role:parent'])->prefix('parent')->name('parent.')->g
         ->middleware('throttle:forms')
         ->name('placements.evaluer');
 
-    // Séances — validation par le parent
-    Route::post('/seances/{seance}/valider', [App\Http\Controllers\ParentSpace\SeanceController::class, 'valider'])
+    // Séances
+    Route::post('/seances/{seance}/valider', [ParentSeanceController::class, 'valider'])
         ->middleware('throttle:parent-actions')
         ->name('seances.valider');
-    Route::post('/seances/{seance}/contester', [App\Http\Controllers\ParentSpace\SeanceController::class, 'contester'])
+    Route::post('/seances/{seance}/contester', [ParentSeanceController::class, 'contester'])
         ->middleware('throttle:parent-actions')
         ->name('seances.contester');
-    Route::post('/placements/{placement}/valider-tout', [App\Http\Controllers\ParentSpace\SeanceController::class, 'validerTout'])
+    Route::post('/placements/{placement}/valider-tout', [ParentSeanceController::class, 'validerTout'])
         ->middleware('throttle:parent-actions')
         ->name('placements.valider-tout');
 });
@@ -110,8 +118,6 @@ Route::middleware(['auth', 'role:repetiteur'])->prefix('repetiteur')->name('repe
     Route::put('/profil', [RepetiteurProfilController::class, 'update'])
         ->middleware('throttle:repetiteur-actions')
         ->name('profil.update');
-    
-    // ⚡ D.4 : Route renommée pour cohérence
     Route::post('/profil/candidature/envoyer', [RepetiteurProfilController::class, 'envoyerCandidature'])
         ->middleware('throttle:repetiteur-actions')
         ->name('profil.candidature.envoyer');
@@ -179,7 +185,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         ->middleware('throttle:admin-normal')
         ->name('repetiteurs.statut');
 
-    // Documents (lecture : pas de throttle)
+    // Documents
     Route::get('/documents/{document}/voir', [AdminRepetiteurController::class, 'voirDocument'])->name('documents.voir');
     Route::get('/documents/{document}/telecharger', [AdminRepetiteurController::class, 'telechargerDocument'])->name('documents.telecharger');
 
@@ -189,7 +195,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/demandes/{demande}/proposer/{repetiteur}', [AdminMatchingController::class, 'proposer'])
         ->middleware('throttle:admin-critical')
         ->name('matching.proposer');
-    Route::post('/propositions/{proposition}/valider', [AdminMatchingController::class, 'validerParAdmin'])->name('matching.valider-admin');   
+    Route::post('/propositions/{proposition}/valider', [AdminMatchingController::class, 'validerParAdmin'])
+        ->middleware('throttle:admin-critical')
+        ->name('matching.valider-admin');
 
     // Placements
     Route::get('/placements/export', [AdminPlacementController::class, 'export'])
@@ -202,21 +210,22 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         ->name('placements.update');
 
     // Suivi
-    Route::get('/suivi', [App\Http\Controllers\Admin\SuiviController::class, 'index'])->name('suivi.index');
-    
-    // Séances — validation admin
-    Route::post('/seances/{seance}/valider-admin', [App\Http\Controllers\Admin\SeanceController::class, 'validerParAdmin'])
-    ->middleware('throttle:admin-critical')
-    ->name('seances.valider-admin');
+    Route::get('/suivi', [AdminSuiviController::class, 'index'])->name('suivi.index');
 
-    // Séances contestées — Arbitrage
-    Route::get('/seances/conteste', [App\Http\Controllers\Admin\SeanceController::class, 'conteste'])->name('seances.conteste');
-    Route::post('/seances/{seance}/arbitrer-valide', [App\Http\Controllers\Admin\SeanceController::class, 'arbitrerValide'])
+    // Séances — validation admin
+    Route::post('/seances/{seance}/valider-admin', [AdminSeanceController::class, 'validerParAdmin'])
         ->middleware('throttle:admin-critical')
-        ->name('seances.arbitrer-valide');
-    Route::post('/seances/{seance}/arbitrer-conteste', [App\Http\Controllers\Admin\SeanceController::class, 'arbitrerConteste'])
-        ->middleware('throttle:admin-critical')
-        ->name('seances.arbitrer-conteste');
+        ->name('seances.valider-admin');
+
+    // 🅱️ Séances contestées — Arbitrage (FONCTIONNALITÉ REPORTÉE — v1.0.2)
+    // Décommenter quand SeanceArbitreeNotification + admin/seances/conteste.blade.php seront créés
+    // Route::get('/seances/conteste', [AdminSeanceController::class, 'conteste'])->name('seances.conteste');
+    // Route::post('/seances/{seance}/arbitrer-valide', [AdminSeanceController::class, 'arbitrerValide'])
+    //     ->middleware('throttle:admin-critical')
+    //     ->name('seances.arbitrer-valide');
+    // Route::post('/seances/{seance}/arbitrer-conteste', [AdminSeanceController::class, 'arbitrerConteste'])
+    //     ->middleware('throttle:admin-critical')
+    //     ->name('seances.arbitrer-conteste');
 });
 
 /*
@@ -226,22 +235,21 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 */
 
 Route::middleware('auth')->group(function () {
-    Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])
+    Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('notifications.index');
 
-    // Lire une notification — accessible en GET ET POST (pour mobile)
-    Route::match(['get', 'post'], '/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'read'])
+    Route::match(['get', 'post'], '/notifications/{id}/read', [NotificationController::class, 'read'])
         ->name('notifications.read');
 
-    Route::post('/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'readAll'])
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])
         ->name('notifications.read-all');
 
     // Push subscriptions
-    Route::get('/push/public-key', [App\Http\Controllers\PushSubscriptionController::class, 'publicKey'])
+    Route::get('/push/public-key', [PushSubscriptionController::class, 'publicKey'])
         ->name('push.public-key');
-    Route::post('/push/subscribe', [App\Http\Controllers\PushSubscriptionController::class, 'subscribe'])
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'subscribe'])
         ->name('push.subscribe');
-    Route::post('/push/unsubscribe', [App\Http\Controllers\PushSubscriptionController::class, 'unsubscribe'])
+    Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'unsubscribe'])
         ->name('push.unsubscribe');
 });
 

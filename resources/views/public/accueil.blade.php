@@ -115,16 +115,17 @@
             }
         }
     </script>
+{{-- ============ COMMENT ÇA MARCHE (avec vidéo verticale) ============ --}}
+<section id="fonctionnement" class="py-16 bg-white">
+    <div class="max-w-6xl mx-auto px-6 md:px-12">
+        <div class="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
 
-    {{-- ============ COMMENT ÇA MARCHE ============ --}}
-    <section id="fonctionnement" class="py-16 bg-white">
-        <div class="max-w-6xl mx-auto px-6 md:px-12">
-            <div class="text-center mb-12 animate-on-scroll">
+            {{-- ====== COLONNE GAUCHE : Titre + 4 étapes ====== --}}
+            <div class="animate-on-scroll">
                 <p class="text-mm-secondary text-sm font-semibold uppercase tracking-wider mb-2">Fonctionnement</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-mm-navy tracking-tight mb-4">Comment ça marche ?</h2>
-                <p class="text-gray-500 max-w-2xl mx-auto">Un processus simple, contrôlé et personnalisé à chaque étape par MON MAÎTRE.</p>
-            </div>
-            <div class="grid md:grid-cols-4 gap-6">
+                <p class="text-gray-500 mb-8">Un processus simple, contrôlé et personnalisé à chaque étape par MON MAÎTRE.</p>
+
                 @php
                     $steps = [
                         ['num' => '01', 'title' => 'Vous décrivez le besoin', 'desc' => 'Classe, matières, objectifs, disponibilités, adresse.'],
@@ -133,17 +134,69 @@
                         ['num' => '04', 'title' => 'Vous validez', 'desc' => 'Nous vous proposons le profil. Vous acceptez et le placement démarre.'],
                     ];
                 @endphp
-                @foreach ($steps as $i => $step)
-                    <div class="animate-on-scroll delay-{{ ($i + 1) * 100 }} relative bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:border-mm-accent hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                        <div class="text-4xl font-bold text-mm-accent mb-4">{{ $step['num'] }}</div>
-                        <h3 class="font-bold text-mm-navy mb-2">{{ $step['title'] }}</h3>
-                        <p class="text-sm text-gray-600 leading-relaxed">{{ $step['desc'] }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section>
 
+                <div class="space-y-4">
+                    @foreach ($steps as $i => $step)
+                        <div class="animate-on-scroll delay-{{ ($i + 1) * 100 }} flex items-start gap-4 bg-gray-50 rounded-2xl p-5 border border-gray-100 hover:border-mm-accent hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                            <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-mm-accent flex items-center justify-center">
+                                <span class="text-lg font-bold text-mm-navy">{{ $step['num'] }}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-mm-navy mb-1">{{ $step['title'] }}</h3>
+                                <p class="text-sm text-gray-600 leading-relaxed">{{ $step['desc'] }}</p>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- ====== COLONNE DROITE : Vidéo verticale 1080x1920 ====== --}}
+            <div class="animate-on-scroll delay-200 flex justify-center lg:justify-end">
+                <div class="relative w-full max-w-[320px] md:max-w-[360px]">
+
+                    {{-- Décor arrière (cercle doré) --}}
+                    <div class="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-mm-accent/20 blur-2xl"></div>
+                    <div class="absolute -bottom-6 -left-6 w-40 h-40 rounded-full bg-mm-secondary/15 blur-2xl"></div>
+
+                    {{-- Cadre vidéo (ratio 9:16) --}}
+                    <div class="relative rounded-3xl overflow-hidden shadow-2xl shadow-mm-navy/30 border-4 border-white bg-mm-navy"
+                         style="aspect-ratio: 9 / 16;">
+
+                        <video
+                            class="w-full h-full object-cover"
+                            autoplay
+                            muted
+                            loop
+                            playsinline
+                            preload="metadata"
+                            poster="{{ asset('images/video/fonctionnement-poster.jpg') }}">
+                            <source src="{{ asset('images/video/fonctionnement.mp4') }}" type="video/mp4">
+                            <source src="{{ asset('images/video/fonctionnement.webm') }}" type="video/webm">
+                            Votre navigateur ne supporte pas la lecture vidéo.
+                        </video>
+
+                        {{-- Overlay dégradé en bas (pour lisibilité si on ajoute du texte) --}}
+                        <div class="absolute inset-x-0 bottom-0 h-32 pointer-events-none"
+                             style="background: linear-gradient(to top, rgba(6, 43, 92, 0.6) 0%, transparent 100%);">
+                        </div>
+
+                        {{-- Badge "Watch" ou "Comment ça marche" --}}
+                        <div class="absolute top-4 left-4 inline-flex items-center gap-2 bg-mm-navy/80 backdrop-blur-sm text-mm-accent text-[11px] font-bold px-3 py-1.5 rounded-full">
+                            <span class="w-1.5 h-1.5 rounded-full bg-mm-accent animate-pulse"></span>
+                            Comment ça marche
+                        </div>
+                    </div>
+
+                    {{-- Légende sous la vidéo --}}
+                    <p class="text-center text-xs text-gray-500 mt-4 leading-relaxed">
+                        🎬 Découvrez notre processus en 60 secondes
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
        {{-- ============ SERVICES (avec PARALLAX optimisé) ============ --}}
         <section id="services" class="relative py-20 overflow-hidden">
             <div class="absolute inset-0 will-change-transform"
@@ -243,10 +296,18 @@
                         Toutes les dates officielles publiées par la DECO : CEPE en mai, BEPC en mai-juin,
                         BAC en juin. Calendrier complet, seuils d'admission, dates de résultats et conseils de préparation.
                     </p>
-                    <a href="#" class="text-mm-accent font-bold text-sm hover:underline inline-flex items-center gap-1 group">
-                        Lire l'article
-                        <x-icons.arrow-right class="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                    </a>
+                    <div class="flex flex-wrap gap-3">
+                        <a href="#" class="text-mm-accent font-bold text-sm hover:underline inline-flex items-center gap-1 group">
+                            Lire l'article
+                            <x-icons.arrow-right class="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        </a>
+                        <a href="https://www.men-deco.org" target="_blank" rel="noopener noreferrer"
+                           class="text-mm-navy font-bold text-sm hover:underline inline-flex items-center gap-1 group">
+                            <x-icons.document class="w-4 h-4" />
+                            Consulter les résultats officiels (DECO)
+                            <x-icons.arrow-right class="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -313,6 +374,31 @@
                         </div>
                     </div>
                 @endforeach
+            </div>
+
+            {{-- Bandeau DECO — Consulter les résultats officiels --}}
+            <div class="mt-10 rounded-2xl p-6 md:p-8 border-2 border-mm-accent/40 bg-gradient-to-r from-mm-accent/10 to-mm-secondary/10 animate-on-scroll">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-mm-navy flex items-center justify-center">
+                            <x-icons.document class="w-6 h-6 text-mm-accent" />
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-mm-navy text-lg mb-1">
+                                Consultez vos résultats d'examens officiels
+                            </h3>
+                            <p class="text-sm text-gray-600 leading-relaxed">
+                                Résultats CEPE, BEPC, BAC disponibles directement sur le site de la
+                                <strong class="text-mm-navy">Direction des Examens et Concours (DECO)</strong>.
+                            </p>
+                        </div>
+                    </div>
+                    <a href="https://www.men-deco.org" target="_blank" rel="noopener noreferrer"
+                       class="flex-shrink-0 inline-flex items-center justify-center gap-2 bg-mm-navy text-white px-6 py-3 rounded-lg font-semibold text-sm hover:bg-mm-navy-hover hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                        Accéder à la DECO
+                        <x-icons.arrow-right class="w-4 h-4" />
+                    </a>
+                </div>
             </div>
 
         </div>
@@ -490,7 +576,6 @@
             @php
                 $faqs = [
                     ['q' => 'Comment fonctionne MON MAÎTRE exactement ?', 'r' => 'Vous décrivez votre besoin (élève, matières, disponibilités). Nous analysons votre demande, sélectionnons dans notre base le répétiteur le plus adapté, vous proposons son profil, et une fois validé, le placement démarre. Nous assurons le suivi pendant toute la durée de la mission.'],
-                    ['q' => 'Quels sont vos tarifs ?', 'r' => 'Les tarifs sont convenus directement entre vous et le répétiteur selon la matière, la classe et la fréquence. MON MAÎTRE ne prend aucune commission cachée sur les séances.'],
                     ['q' => 'Comment sont sélectionnés vos répétiteurs ?', 'r' => 'Chaque candidat est soumis à une vérification rigoureuse : diplômes, expérience, références, entretien. Seuls les profils validés par notre équipe peuvent recevoir des propositions.'],
                     ['q' => 'Que se passe-t-il si le répétiteur ne convient pas ?', 'r' => 'Vous pouvez demander un remplacement à tout moment. MON MAÎTRE recherche alors un nouveau profil adapté à votre besoin.'],
                     ['q' => 'Les cours se passent-ils uniquement à domicile ?', 'r' => 'Les cours se déroulent principalement à votre domicile ou dans un lieu convenu ensemble. Selon les besoins, certains répétiteurs peuvent également proposer des séances en ligne.'],

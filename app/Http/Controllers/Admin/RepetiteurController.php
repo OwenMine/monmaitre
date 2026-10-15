@@ -12,11 +12,12 @@ use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RepetiteurController extends Controller
 {
-    public function index(Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $query = Repetiteur::with('user');
 
@@ -52,7 +53,7 @@ class RepetiteurController extends Controller
         return view('admin.repetiteurs.index', compact('repetiteurs', 'counts'));
     }
 
-    public function show(Repetiteur $repetiteur): \Illuminate\View\View
+    public function show(Repetiteur $repetiteur): View
     {
         $repetiteur->load(['user', 'documents']);
 
@@ -61,21 +62,18 @@ class RepetiteurController extends Controller
 
     public function valider(Repetiteur $repetiteur): RedirectResponse
     {
-        // ⚡ FIX : capturer l'ancien statut AVANT la mise à jour
         $ancienStatut = $repetiteur->statut;
 
         $repetiteur->update(['statut' => 'profil_valide']);
 
-        // Marquer l'email comme vérifié (validation admin)
         if (! $repetiteur->user->email_verified_at) {
             $repetiteur->user->update(['email_verified_at' => now()]);
         }
 
-        // 🔔 NOTIF AU RÉPÉTITEUR
         $repetiteur->user->notify(new ProfilValideNotification($repetiteur));
 
-        // 📝 Log d'audit
-        AuditLogger::admin('REPETITEUR_VALIDE',
+        AuditLogger::admin(
+            'REPETITEUR_VALIDE',
             "Validation du profil de {$repetiteur->user->name}",
             [
                 'repetiteur_id'  => $repetiteur->id,
@@ -90,13 +88,12 @@ class RepetiteurController extends Controller
 
     public function refuser(Repetiteur $repetiteur): RedirectResponse
     {
-        // ⚡ FIX : capturer l'ancien statut AVANT la mise à jour
         $ancienStatut = $repetiteur->statut;
 
         $repetiteur->update(['statut' => 'profil_refuse']);
 
-        // 📝 Log d'audit
-        AuditLogger::admin('REPETITEUR_REFUSE',
+        AuditLogger::admin(
+            'REPETITEUR_REFUSE',
             "Refus du profil de {$repetiteur->user->name}",
             [
                 'repetiteur_id'  => $repetiteur->id,
@@ -111,20 +108,17 @@ class RepetiteurController extends Controller
 
     public function suspendre(Repetiteur $repetiteur): RedirectResponse
     {
-        // ⚡ FIX : capturer l'ancien statut AVANT la mise à jour
         $ancienStatut = $repetiteur->statut;
 
         $repetiteur->update(['statut' => 'profil_suspendu']);
-
-        // ⚡ B.11 : Déconnecter toutes les sessions du répétiteur
         $repetiteur->user->update(['status' => 'suspendu']);
 
         \Illuminate\Support\Facades\DB::table('sessions')
             ->where('user_id', $repetiteur->user->id)
             ->delete();
 
-        // 📝 Log d'audit
-        AuditLogger::admin('REPETITEUR_SUSPENDU',
+        AuditLogger::admin(
+            'REPETITEUR_SUSPENDU',
             "Suspension du profil de {$repetiteur->user->name}",
             [
                 'repetiteur_id' => $repetiteur->id,
@@ -142,12 +136,10 @@ class RepetiteurController extends Controller
             'statut' => 'required|in:pre_inscrit,dossier_incomplet,candidature_envoyee,a_examiner,entretien_a_effectuer,documents_a_verifier,profil_valide,profil_en_attente,profil_refuse,profil_suspendu',
         ]);
 
-        // ⚡ FIX : capturer l'ancien statut AVANT la mise à jour
         $ancienStatut = $repetiteur->statut;
 
         $repetiteur->update(['statut' => $request->statut]);
 
-        // Si le nouveau statut est "profil_valide" → notifier + vérifier email
         if ($request->statut === 'profil_valide') {
             if (! $repetiteur->user->email_verified_at) {
                 $repetiteur->user->update(['email_verified_at' => now()]);
@@ -156,8 +148,8 @@ class RepetiteurController extends Controller
             $repetiteur->user->notify(new ProfilValideNotification($repetiteur));
         }
 
-        // 📝 Log d'audit
-        AuditLogger::admin('REPETITEUR_STATUT_CHANGE',
+        AuditLogger::admin(
+            'REPETITEUR_STATUT_CHANGE',
             "Changement de statut de {$repetiteur->user->name} : {$ancienStatut} → {$request->statut}",
             [
                 'repetiteur_id'  => $repetiteur->id,
@@ -168,10 +160,6 @@ class RepetiteurController extends Controller
 
         return redirect()->back()->with('success', 'Statut mis à jour avec succès.');
     }
-
-    // ============================================================
-    // DOCUMENTS
-    // ============================================================
 
     public function voirDocument(Document $document)
     {

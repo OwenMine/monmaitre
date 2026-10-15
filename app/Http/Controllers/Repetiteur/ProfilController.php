@@ -1,17 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Repetiteur;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\Repetiteur;
 use App\Rules\ValidFileType;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class ProfilController extends Controller
 {
-    public function edit()
+    public function edit(): View
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -25,7 +31,7 @@ class ProfilController extends Controller
         return view('repetiteur.profil.edit', compact('repetiteur'));
     }
 
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -35,9 +41,9 @@ class ProfilController extends Controller
         }
 
         $data = $request->validate([
-            'niveau_etudes' => 'required|string|max:100',
-            'diplome'       => 'required|string|max:150',
-            'etablissement' => 'nullable|string|max:150',
+            'niveau_etudes'   => 'required|string|max:100',
+            'diplome'         => 'required|string|max:150',
+            'etablissement'   => 'nullable|string|max:150',
             'annee_obtention' => 'nullable|integer|min:1950|max:' . date('Y'),
 
             'matieres_text' => 'required|string',
@@ -54,15 +60,13 @@ class ProfilController extends Controller
             'horaires_disponibles' => 'required|string|max:255',
             'max_eleves'           => 'required|integer|min:1|max:20',
 
-            'communes_text'      => 'required|string',
-            'quartiers_text'     => 'nullable|string',
-            'rayon_deplacement'  => 'required|integer|min:1|max:100',
+            'communes_text'     => 'required|string',
+            'quartiers_text'    => 'nullable|string',
+            'rayon_deplacement' => 'required|integer|min:1|max:100',
         ]);
 
-        // ⚡ B.8 : Transaction pour éviter la perte de données
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($data, $repetiteur) {
-                // Convertir les textes en tableaux
+            DB::transaction(function () use ($data, $repetiteur) {
                 $data['matieres']  = array_values(array_filter(array_map('trim', explode("\n", $data['matieres_text']))));
                 $data['classes']   = array_values(array_filter(array_map('trim', explode("\n", $data['classes_text']))));
                 $data['communes']  = array_values(array_filter(array_map('trim', explode("\n", $data['communes_text']))));
@@ -70,7 +74,6 @@ class ProfilController extends Controller
                     ? array_values(array_filter(array_map('trim', explode("\n", $data['quartiers_text']))))
                     : [];
 
-                // Supprimer les champs temporaires
                 unset(
                     $data['matieres_text'],
                     $data['classes_text'],
@@ -85,7 +88,7 @@ class ProfilController extends Controller
                 ->with('success', 'Votre profil a été enregistré.');
 
         } catch (\Throwable $e) {
-            \Log::error('Erreur sauvegarde profil répétiteur', [
+            Log::error('Erreur sauvegarde profil répétiteur', [
                 'repetiteur_id' => $repetiteur->id,
                 'user_id'       => auth()->id(),
                 'error'         => $e->getMessage(),
@@ -97,11 +100,7 @@ class ProfilController extends Controller
         }
     }
 
-    // ============================================================
-    // PHOTO DE PROFIL
-    // ============================================================
-
-    public function uploadPhoto(Request $request)
+    public function uploadPhoto(Request $request): RedirectResponse
     {
         $request->validate([
             'photo' => [
@@ -118,12 +117,10 @@ class ProfilController extends Controller
             return redirect()->back()->with('error', 'Profil introuvable.');
         }
 
-        // Supprimer l'ancienne photo
         if ($repetiteur->photo && Storage::disk('public')->exists($repetiteur->photo)) {
             Storage::disk('public')->delete($repetiteur->photo);
         }
 
-        // Stocker la nouvelle
         $path = $request->file('photo')->store('repetiteurs/photos', 'public');
 
         $repetiteur->update(['photo' => $path]);
@@ -132,7 +129,7 @@ class ProfilController extends Controller
             ->with('success', 'Photo de profil mise à jour.');
     }
 
-    public function supprimerPhoto()
+    public function supprimerPhoto(): RedirectResponse
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -150,11 +147,7 @@ class ProfilController extends Controller
             ->with('success', 'Photo de profil supprimée.');
     }
 
-    // ============================================================
-    // CANDIDATURE
-    // ============================================================
-
-    public function envoyerCandidature()
+    public function envoyerCandidature(): RedirectResponse
     {
         $repetiteur = auth()->user()->repetiteur;
 
@@ -174,11 +167,7 @@ class ProfilController extends Controller
             ->with('success', 'Votre candidature a été envoyée à MON MAÎTRE.');
     }
 
-    // ============================================================
-    // DOCUMENTS
-    // ============================================================
-
-    public function uploadDocument(Request $request)
+    public function uploadDocument(Request $request): RedirectResponse
     {
         $request->validate([
             'type'    => 'required|in:cv,diplome,certificat,autre',
@@ -194,14 +183,14 @@ class ProfilController extends Controller
 
         $fichier = $request->file('fichier');
 
-        // ⚡ Nettoyer le nom du fichier (éviter les caractères dangereux)
         $nomOriginal = str_replace(
             ['/', '\\', '..', "\0"],
             '_',
             $fichier->getClientOriginalName()
         );
         $nomOriginal = preg_replace('/[\x00-\x1F\x7F]/u', '', $nomOriginal);
-        $nomOriginal = mb_substr($nomOriginal, 0, 200); // Limite de longueur
+        $nomOriginal = mb_substr($nomOriginal, 0, 200);
+
         $chemin = $fichier->store('documents/' . $repetiteur->id, 'local');
 
         Document::create([
@@ -215,7 +204,7 @@ class ProfilController extends Controller
             ->with('success', 'Document ajouté avec succès.');
     }
 
-    public function supprimerDocument(Document $document)
+    public function supprimerDocument(Document $document): RedirectResponse
     {
         if ($document->repetiteur->user_id !== auth()->id()) {
             abort(403);

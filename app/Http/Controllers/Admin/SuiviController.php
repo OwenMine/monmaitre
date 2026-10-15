@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -7,17 +9,12 @@ use App\Models\Evaluation;
 use App\Models\Placement;
 use App\Models\Seance;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class SuiviController extends Controller
 {
-    /**
-     * Dashboard de suivi global.
-     */
-    public function index()
+    public function index(): View
     {
-        // ============================================
-        // KPI GLOBAUX
-        // ============================================
         $stats = [
             'placements_actifs'    => Placement::whereIn('statut', ['confirme', 'en_cours'])->count(),
             'placements_termines'  => Placement::where('statut', 'termine')->count(),
@@ -25,7 +22,7 @@ class SuiviController extends Controller
                                         ->whereMonth('date', now()->month)
                                         ->whereYear('date', now()->year)
                                         ->count(),
-            'note_moyenne_globale' => round(Evaluation::avg('note') ?? 0, 1),
+            'note_moyenne_globale' => round((float) (Evaluation::avg('note') ?? 0), 1),
             'taux_presence_global' => $this->calculerTauxPresenceGlobal(),
             'absences_ce_mois'     => Seance::where('statut', 'absence_repetiteur')
                                         ->whereMonth('date', now()->month)
@@ -33,14 +30,10 @@ class SuiviController extends Controller
                                         ->count(),
         ];
 
-        // ============================================
-        // GRAPHIQUE 1 : Évolution des séances (12 dernières semaines) OPTIMISATION : 1 requête au lieu de 12
-        // ============================================
-       
+        // ⚡ C.6 : 1 requête au lieu de 12
         $debutGlobal = now()->subWeeks(11)->startOfWeek();
         $finGlobal   = now()->endOfWeek();
 
-        // Compter les séances par semaine en 1 seule requête
         $seancesParSemaineDB = Seance::where('statut', 'effectuee')
             ->whereBetween('date', [$debutGlobal, $finGlobal])
             ->selectRaw('YEARWEEK(date, 1) as semaine, COUNT(*) as total')
@@ -48,11 +41,10 @@ class SuiviController extends Controller
             ->pluck('total', 'semaine')
             ->toArray();
 
-        // Construire le tableau final (12 semaines)
         $seancesParSemaine = [];
         for ($i = 11; $i >= 0; $i--) {
-            $debut = now()->subWeeks($i)->startOfWeek();
-            $semaine = (int) $debut->format('oW'); // Format ISO : année + semaine
+            $debut   = now()->subWeeks($i)->startOfWeek();
+            $semaine = (int) $debut->format('oW');
 
             $seancesParSemaine[] = [
                 'label' => $debut->format('d/m'),
@@ -60,17 +52,11 @@ class SuiviController extends Controller
             ];
         }
 
-        // ============================================
-        // GRAPHIQUE 2 : Répartition des statuts de placement
-        // ============================================
         $repartitionStatuts = Placement::select('statut', DB::raw('count(*) as total'))
             ->groupBy('statut')
             ->pluck('total', 'statut')
             ->toArray();
 
-        // ============================================
-        // TABLEAU : Placements actifs avec leurs indicateurs
-        // ============================================
         $placementsActifs = Placement::with(['parent', 'eleve', 'repetiteur.user', 'evaluation'])
             ->whereIn('statut', ['confirme', 'en_cours'])
             ->withCount([
@@ -81,9 +67,6 @@ class SuiviController extends Controller
             ->latest()
             ->paginate(15);
 
-        // ============================================
-        // ALERTES
-        // ============================================
         $alertes = $this->genererAlertes();
 
         return view('admin.suivi.index', compact(
@@ -95,22 +78,18 @@ class SuiviController extends Controller
         ));
     }
 
-    /**
-     * Calcule le taux de présence global (%).
-     */
     protected function calculerTauxPresenceGlobal(): float
     {
         $total = Seance::count();
-        if ($total === 0) return 0;
+        if ($total === 0) {
+            return 0.0;
+        }
 
         $effectuees = Seance::where('statut', 'effectuee')->count();
 
         return round(($effectuees / $total) * 100, 1);
     }
 
-    /**
-     * Génère la liste des alertes.
-     */
     protected function genererAlertes(): array
     {
         $alertes = [];

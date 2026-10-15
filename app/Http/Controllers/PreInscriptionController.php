@@ -1,39 +1,37 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Support\PhoneHelper;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\View\View;
 
 class PreInscriptionController extends Controller
 {
-    // ================================================================
-    // PARENT
-    // ================================================================
-
-    public function formParent()
+    public function formParent(): View
     {
         return view('pre-inscription.parent');
     }
 
-    public function storeParent(Request $request)
+    public function storeParent(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name'      => 'required|string|max:255',
-            'phone'     => 'required|string|max:20|unique:users,phone',
-            'whatsapp'  => 'nullable|string|max:20',
-            'commune'   => 'required|string|max:100',
-            'quartier'  => 'nullable|string|max:100',
-            'password'  => 'required|string|min:8|confirmed',
+            'name'     => 'required|string|max:255',
+            'phone'    => 'required|string|max:20|unique:users,phone',
+            'whatsapp' => 'nullable|string|max:20',
+            'commune'  => 'required|string|max:100',
+            'quartier' => 'nullable|string|max:100',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // ⚡ B.19 : Utiliser PhoneHelper
         $phone = PhoneHelper::normalize($data['phone']);
 
-        // Vérifier qu'après normalisation, le numéro n'existe pas déjà
         if (User::where('phone', $phone)->exists()) {
             return back()
                 ->withInput()
@@ -42,7 +40,7 @@ class PreInscriptionController extends Controller
 
         $user = User::create([
             'name'     => $data['name'],
-            'email'    => null, // Parent : email optionnel (null par défaut)
+            'email'    => null,
             'phone'    => $phone,
             'whatsapp' => isset($data['whatsapp']) ? PhoneHelper::normalize($data['whatsapp']) : null,
             'commune'  => $data['commune'],
@@ -60,34 +58,30 @@ class PreInscriptionController extends Controller
             ->with('success', 'Bienvenue sur MON MAÎTRE ! Complétez votre demande pour continuer.');
     }
 
-    // ================================================================
-    // RÉPÉTITEUR
-    // ================================================================
-
-    public function formRepetiteur()
+    public function formRepetiteur(): View
     {
         return view('pre-inscription.repetiteur');
     }
 
-    public function storeRepetiteur(Request $request)
+    public function storeRepetiteur(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'name'        => 'required|string|max:255',
-            'email'       => 'required|email|unique:users,email',
-            'phone'       => 'required|string|max:20|unique:users,phone',
-            'whatsapp'    => 'nullable|string|max:20',
-            'commune'     => 'required|string|max:100',
-            'quartier'    => 'nullable|string|max:100',
-            'matieres'    => 'required|string|max:255',
-            'niveaux'     => 'required|string|max:255',
-            'experience'  => 'required|integer|min:0|max:50',
-            'password'    => 'required|string|min:8|confirmed',
+            'name'       => 'required|string|max:255',
+            'email'      => 'required|email|unique:users,email',
+            'phone'      => 'required|string|max:20|unique:users,phone',
+            'whatsapp'   => 'nullable|string|max:20',
+            'commune'    => 'required|string|max:100',
+            'quartier'   => 'nullable|string|max:100',
+            'matieres'   => 'required|string|max:255',
+            'niveaux'    => 'required|string|max:255',
+            'experience' => 'required|integer|min:0|max:50',
+            'password'   => 'required|string|min:8|confirmed',
         ]);
 
         $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'],
-            'phone'    => PhoneHelper::normalize($data['phone']),  // ⚡ B.19
+            'phone'    => PhoneHelper::normalize($data['phone']),
             'whatsapp' => isset($data['whatsapp']) ? PhoneHelper::normalize($data['whatsapp']) : null,
             'commune'  => $data['commune'],
             'quartier' => $data['quartier'] ?? null,

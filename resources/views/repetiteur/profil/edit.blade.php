@@ -165,10 +165,23 @@
                     <p class="text-xs text-gray-400 mt-1.5">Cliquez sur les boutons ou tapez directement vos matières.</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">Classes enseignées * (une par ligne)</label>
-                    <textarea name="classes_text" rows="3" required
+                    <label class="block text-sm font-medium mb-2">Classes enseignées * (une par ligne)</label>
+
+                    {{-- Boutons de sélection rapide --}}
+                    <div class="mb-3 flex flex-wrap gap-2">
+                        @foreach(['CP', 'CE1', 'CE2', 'CM1', 'CM2', '6e', '5e', '4e', '3e', '2nde', '1ère', 'Terminale'] as $classe)
+                            <button type="button"
+                                onclick="addClasseRep('{{ $classe }}')"
+                                class="text-xs font-semibold px-3 py-1.5 rounded-md bg-mm-secondary/10 text-mm-secondary hover:bg-mm-secondary hover:text-white transition-all duration-200">
+                                + {{ $classe }}
+                            </button>
+                        @endforeach
+                    </div>
+
+                    <textarea name="classes_text" id="classes_text_rep" rows="3" required
                         placeholder="6e&#10;5e&#10;3e"
                         class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-mm-secondary focus:ring-2 focus:ring-mm-secondary/20 transition">{{ old('classes_text', implode("\n", $repetiteur->classes ?? [])) }}</textarea>
+                    <p class="text-xs text-gray-400 mt-1.5">Cliquez sur les boutons ou tapez directement vos classes.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -353,7 +366,7 @@
         </form>
     @endif
 
-    {{-- Script : ajout rapide de matières --}}
+        {{-- Script : ajout rapide de matières et classes --}}
     <script>
         function addMatiereRep(matiere) {
             const textarea = document.getElementById('matieres_text_rep');
@@ -362,6 +375,16 @@
 
             if (!matieres.includes(matiere)) {
                 textarea.value = current ? current + '\n' + matiere : matiere;
+            }
+        }
+
+        function addClasseRep(classe) {
+            const textarea = document.getElementById('classes_text_rep');
+            const current = textarea.value.trim();
+            const classes = current ? current.split('\n').map(c => c.trim()) : [];
+
+            if (!classes.includes(classe)) {
+                textarea.value = current ? current + '\n' + classe : classe;
             }
         }
     </script>
